@@ -24,7 +24,7 @@ engine internals (and the scripts that drive them) live out of the way in
 
 | File | Purpose |
 |---|---|
-| `agents/` | Agent implementations: `idle_agent` (does nothing), `random_agent` (random valid actions). Write your own modules here. |
+| `agents/` | Agent implementations: `idle_agent` (does nothing), `random_agent` (random valid actions), `simple_agent` (a basic but functional strategy — the default in `agents_config.py`). Write your own modules here. |
 | `agents_config.py` | Which agent module plays player 0 / player 1 |
 | `play.py` | **Launcher — run this.** `python play.py run [...]` / `python play.py view <file>`. Sets up the virtual environment for you on first run (see "Setup" below) and uses it automatically — no activation needed. |
 | `requirements.txt` | Dependencies installed into `.venv` on first run (currently just `pygame`). |
