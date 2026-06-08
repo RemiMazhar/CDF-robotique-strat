@@ -1,0 +1,431 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{parskip}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!50!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black,
+    pdftitle={Simulateur de stratégie CDF de robotique --- Guide du développeur d'agents},
+    pdfauthor={RobotX},
+}
+
+\definecolor{codebg}{rgb}{0.96,0.96,0.96}
+\lstdefinestyle{py}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    keywordstyle=\color{blue!60!black}\bfseries,
+    commentstyle=\color{green!40!black}\itshape,
+    stringstyle=\color{red!50!black},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=1em,
+    xrightmargin=1em,
+}
+\lstdefinestyle{shell}{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    breaklines=true,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=1em,
+    xrightmargin=1em,
+}
+\lstset{style=py}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\func}[1]{\texttt{#1}}
+
+\title{\textbf{Simulateur de stratégie CDF de robotique}\\[0.3em]\large Guide du développeur d'agents}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\tableofcontents
+\newpage
+
+% ============================================================================
+\section{Présentation}
+
+Un jeu à 2 joueurs simulant la Coupe de France de Robotique 2026, destiné à
+être joué par des agents Python. Deux robots circulaires s'affrontent sur une
+carte rectangulaire pour collecter, recolorer et déposer des « caisses » afin
+de marquer des points.
+
+En tant que développeur d'agent, vous allez :
+\begin{itemize}[nosep]
+    \item écrire des modules Python dans \code{agents/} qui décident de
+          l'action de votre robot à chaque tick,
+    \item choisir quel agent joue quel joueur dans \code{agents\_config.py},
+    \item lancer et observer des parties grâce au lanceur \code{play.py}.
+\end{itemize}
+
+% ============================================================================
+\section{Le jeu, dans les grandes lignes}
+
+\begin{description}[leftmargin=1.2cm,style=nextline]
+    \item[La carte] Un rectangle contenant des zones rectangulaires sans 
+        chevauchement : la zone du joueur 0, la zone du joueur 1, et une ou
+        plusieurs \emph{zones de score}.
+    \item[Caisses] Des rectangles de taille identique dispersés sur la
+        carte. Chaque caisse a une \textbf{couleur} (\code{0} ou \code{1}) et
+        peut être ramassée par les robots.
+    \item[Robots] Chaque joueur contrôle un robot circulaire qui démarre
+        dans sa propre zone. Un robot peut tourner librement, avancer/reculer,
+        ramasser une caisse proche, changer la couleur d'une caisse proche, ou
+        poser une caisse qu'il transporte.
+    \item[Tours] Le temps est discrétisé en \emph{ticks}. À chaque tick, le
+        joueur 0 puis le joueur 1 appelle \func{make\_decision()} une fois.
+        \textbf{Exactement une action} peut être effectuée par tour.
+    \item[Score] Calculé à la fin de la partie :
+        \begin{itemize}[nosep]
+            \item chaque caisse posée dans la zone du joueur $X$
+                  $\rightarrow$ \textbf{+\code{config.POINTS\_OWN\_AREA}} pour
+                  $X$ (quelle que soit la couleur de la caisse) ;
+            \item chaque caisse posée dans une zone de score et dont la
+                  couleur est $X$ $\rightarrow$
+                  \textbf{+\code{config.POINTS\_SCORING\_AREA}} pour $X$ ;
+            \item les caisses actuellement transportées par un robot ne
+                  rapportent aucun point.
+        \end{itemize}
+\end{description}
+
+% ============================================================================
+\section{Règles du jeu en détail}
+\label{sec:one-action}
+
+\begin{itemize}
+    \item \textbf{Une action par tour} : \func{make\_decision()} peut
+          appeler exactement une fonction d'action. \func{rotate} ne compte
+          pas comme une action et peut être appelée un nombre arbitraire de
+          fois à chaque tour.
+    \item \textbf{Emplacement de pose} : à une distance fixe
+          (\code{config.LAY\_DOWN\_DISTANCE}) directement devant le robot,
+          orientée selon la direction actuelle du robot. Échoue si
+          l'emplacement est hors de la carte ou chevauche une autre caisse.
+    \item \textbf{Rotation des caisses} : les caisses prennent l'orientation
+          du robot lorsqu'elles sont posées.
+    \item \textbf{Disposition initiale} : fixe et entièrement définie dans le
+          fichier de configuration.
+    \item \textbf{Les actions échouées ne consomment pas le tour} : si une
+          action lève \code{GameError} (par ex.\ \func{lay\_down} bloqué,
+          \func{pickup} hors de portée), votre tour n'est \emph{pas}
+          consommé, vous pouvez donc essayer autre chose.
+    \item \textbf{Collision lors du déplacement} : le robot s'arrête juste
+          avant de heurter le bord de la carte, l'autre robot, ou une caisse
+          posée.
+    \item \textbf{Les caisses portées par un robot ne rapportent aucun point} et ne
+          sont pas des obstacles physiques pour le déplacement.
+\end{itemize}
+
+% ============================================================================
+\section{Premiers pas}
+
+\subsection{Lancer une partie}
+
+Utilisez \code{play.py} avec votre interpréteur Python habituel (\code{python} /
+\code{python3} / \code{py}) depuis la racine du projet.
+
+\begin{lstlisting}[style=shell,language=bash]
+python play.py run                  # lance une partie, affiche la progression et le score final
+python play.py run --quiet          # supprime les messages d'erreur a chaque tick
+python play.py run --save           # sauvegarde aussi la partie dans saved_games/
+python play.py run --save --view    # lance, sauvegarde, puis rejoue immediatement la partie
+python play.py view <history.json>  # rejoue une partie depuis saved_games/ (ou un chemin quelconque)
+\end{lstlisting}
+
+\subsection{Choisir quel agent joue}
+
+Modifiez \code{agents\_config.py} à la racine du projet :
+
+\begin{lstlisting}
+PLAYER0_AGENT = "agents.simple_agent"
+PLAYER1_AGENT = "agents.idle_agent"
+\end{lstlisting}
+
+Chaque constante pointe vers un module du dossier \code{agents/}, chargé
+dynamiquement. Les deux emplacements peuvent désigner le \emph{même} module
+pour faire jouer un agent contre lui-même.
+
+% ============================================================================
+\section{Écrire son propre agent}
+
+Créez \code{agents/my\_agent.py} en y définissant une classe \code{Agent}
+dotée d'une méthode \func{make\_decision(self)} :
+
+\begin{lstlisting}
+import interface
+
+class Agent:
+    def make_decision(self):
+        player = interface.me()
+        accessible = interface.get_accessible_boxes(player)
+        if accessible:
+            interface.pickup(accessible[0].id)
+        else:
+            interface.move(10.0)
+\end{lstlisting}
+
+Pointez ensuite \code{agents\_config.PLAYER0\_AGENT} (ou
+\code{PLAYER1\_AGENT}) vers \code{"agents.my\_agent"} et lancez
+\code{python play.py run --view}.
+
+Consultez \code{agents/random\_agent.py} pour un exemple.
+
+\subsection{Mémoire de l'agent}
+\label{sec:memory}
+
+Le lanceur crée une \emph{instance} \code{Agent()} par joueur, même lorsque
+\code{PLAYER0\_AGENT} et \code{PLAYER1\_AGENT} désignent le même module.
+Votre agent peut donc avoir une mémoire si vous en avez besoin :
+
+\begin{lstlisting}
+class Agent:
+    def __init__(self):
+        self.visited = set()
+
+    def make_decision(self):
+        player = interface.me()
+        self.visited.add(interface.get_position(player))
+        # ...
+\end{lstlisting}
+
+% ============================================================================
+\newpage
+\section{L'interface de l'agent (\code{interface})}
+
+Les agents font \code{import interface} (et généralement aussi
+\code{import config} pour des constantes telles que
+\code{config.MAX\_MOVE\_SPEED}).
+
+\subsection{Fonctions d'information}
+\emph{Peuvent être appelées librement, autant de fois que voulu.}
+
+\begin{longtable}{p{6.7cm}p{8.3cm}}
+\toprule
+\textbf{Fonction} & \textbf{Retourne} \\
+\midrule
+\endhead
+\func{interface.me()} & L'indice du joueur de cet agent (0 ou 1) \\
+\func{interface.opponent()} & \code{1 - me()} \\
+\func{interface.get\_position(player)} & Centre \code{(x, y)} du robot du joueur \\
+\func{interface.get\_orientation(player)} & Vecteur unitaire \code{(x, y)} indiquant la direction du robot du joueur \\
+\func{interface.get\_map()} & L'objet \code{Map} (\code{.width}, \code{.height}, \code{.areas}) \\
+\func{interface.get\_area\_containing(position)} & La zone \code{Area} contenant \code{position}, ou \code{None} si elle n'est dans aucune zone \\
+\func{interface.get\_area(area\_id)} & La zone \code{Area} ayant cet identifiant, ou \code{None} \\
+\func{interface.get\_area\_center(area\_id)} & Centre \code{(x, y)} de cette zone \\
+\func{interface.get\_boxes()} & Tous les objets \code{Box} (au sol et transportés) \\
+\func{interface.get\_box(box\_id)} & La caisse \code{Box} ayant cet identifiant, ou \code{None} \\
+\func{interface.get\_accessible\_boxes(player)} & Caisses au sol à portée de \code{player} \\
+\func{interface.get\_boxes\_held(player)} & Caisses actuellement transportées par \code{player} \\
+\func{interface.is\_accessible(player, box\_id)} & La caisse est-elle au sol et à portée ? \\
+\func{interface.is\_colliding(player, amount)} & Avancer de \code{amount} provoquerait-il une collision (bord/robot/caisse) ? \\
+\func{interface.get\_box\_distance(player, box\_id)} & Distance cercle-rectangle, du robot vers la caisse \\
+\func{interface.get\_box\_direction(player, box\_id)} & Vecteur unitaire du centre du robot vers le centre de la caisse \\
+\func{interface.get\_area\_distance(player, area\_id)} & Distance du centre du robot au rectangle de la zone (0 si à l'intérieur) \\
+\func{interface.get\_area\_direction(player, area\_id)} & Vecteur unitaire du centre du robot vers le centre de la zone \\
+\func{interface.get\_score(player)} & Score que \code{player} obtiendrait si la partie se terminait maintenant \\
+\bottomrule
+\end{longtable}
+
+\subsection{Fonctions d'action}
+\emph{Exactement une par appel à \func{interface.make\_decision()} (sauf
+\func{rotate}, qui est gratuite).}
+
+\begin{longtable}{p{6.7cm}p{8.3cm}}
+\toprule
+\textbf{Fonction} & \textbf{Effet} \\
+\midrule
+\endhead
+\func{interface.move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision \\
+\func{interface.rotate(new\_direction)} & Oriente le robot vers \code{new\_direction} \\
+\func{interface.pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines) \\
+\func{interface.set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1 \\
+\func{interface.lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites) \\
+\bottomrule
+\end{longtable}
+
+Toutes les fonctions d'action peuvent lever :
+\begin{itemize}[nosep]
+    \item \code{interface.ActionError} si une seconde action est tentée
+          durant le même tour.
+    \item \code{game.GameError} si l'action elle-même est invalide (hors de
+          portée, bloquée, etc.). Cela ne consomme \textbf{pas} le tour,
+          vous pouvez donc vous rattraper et essayer autre chose.
+\end{itemize}
+
+% ============================================================================
+\section{Classes de données}
+
+Ce sont les objets retournés par les fonctions de \code{interface}.
+
+\begin{description}[leftmargin=2.4cm,style=nextline]
+    \item[\code{Box(id, position, orientation, color, owner)}]
+        Une caisse sur la carte. \code{owner == -1} signifie qu'elle est
+        posée au sol ; sinon \code{owner} est l'indice du joueur qui la
+        transporte actuellement. \code{color} vaut \code{0} ou \code{1} ;
+        \code{orientation} est un vecteur unitaire le long de son axe de
+        largeur.
+    \item[\code{Area(id, type, x, y, width, height)}]
+        Une zone rectangulaire alignée sur les axes. \code{type} vaut
+        \code{0} (zone du joueur 0), \code{1} (zone du joueur 1), ou
+        \code{2} (zone de score).
+    \item[\code{Map(width, height, areas)}]
+        La carte statique : dimensions globales plus la liste de tous les
+        objets \code{Area} (zones des joueurs et zones de score confondues).
+\end{description}
+
+% ============================================================================
+\section{Référence des constantes}
+
+\subsubsection*{Carte}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.MAP\_WIDTH} & 1000.0 & Largeur du terrain de jeu, en unités de
+    jeu (étendue selon \code{x} ; pour rappel, \code{(0, 0)} est le coin
+    supérieur gauche). \\
+\code{config.MAP\_HEIGHT} & 600.0 & Hauteur du terrain de jeu (étendue selon
+    \code{y}). \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Zones}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & Rectangle
+    \code{(x, y, largeur, hauteur)} définissant la zone de base du joueur 0. \\
+\code{config.PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Idem, pour le
+    joueur 1 (\code{Area.type == 1}). \\
+\code{config.SCORING\_AREAS} & \scriptsize liste de 2 rectangles & Liste de
+    rectangles \code{(x, y, largeur, hauteur)}, chacun devenant une
+    \code{Area} avec \code{type == 2}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Positions et orientations de départ des robots}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.PLAYER0\_START} & (75, 300) & Position de départ \code{(x, y)}
+    du robot du joueur 0 --- à l'intérieur de \code{PLAYER0\_AREA}. \\
+\code{config.PLAYER0\_START\_ANGLE} & 0.0 & Angle d'orientation initial du
+    robot du joueur 0, en \textbf{degrés} mesurés depuis l'axe $+x$
+    ($0^\circ$ = orienté vers la droite, vers le centre de la carte). \\
+\code{config.PLAYER1\_START} & (925, 300) & Position de départ du robot du
+    joueur 1. \\
+\code{config.PLAYER1\_START\_ANGLE} & 180.0 & Angle d'orientation initial du
+    robot du joueur 1 ($180^\circ$ = orienté vers la gauche, vers le centre
+    de la carte). \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Physique des robots}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.ROBOT\_RADIUS} & 20.0 & Rayon du corps circulaire du robot. \\
+\code{config.MAX\_MOVE\_SPEED} & 10.0 & La plus grande valeur de
+    \code{|amount|} qu'un appel à \func{move} appliquera réellement, par
+    tick. \\
+\code{config.MAX\_BOXES\_HELD} & 3 & Nombre maximal de caisses qu'un robot
+    peut transporter à la fois. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Dimensions des caisses}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.BOX\_WIDTH} & 40.0 & Largeur d'une caisse. \\
+\code{config.BOX\_HEIGHT} & 25.0 & Hauteur d'une caisse. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Distances d'interaction}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.ACCESSIBILITY\_RADIUS} & 25.0 & Distance cercle-rectangle
+    maximale (du centre du robot au point le plus proche de la caisse) en
+    deçà de laquelle une caisse est considérée comme « accessible »
+    (c.-à-d.\ à portée pour \func{pickup} et \func{set\_color}). \\
+\code{config.LAY\_DOWN\_DISTANCE} & 45.0 & Distance fixe entre le centre du
+    robot et le \emph{centre} d'une caisse posée via \func{lay\_down}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Score}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.POINTS\_OWN\_AREA} & 3 & Points attribués au joueur $X$ pour
+    chaque caisse posée dans la zone de $X$. \\
+\code{config.POINTS\_SCORING\_AREA} & 5 & Points attribués au joueur $X$
+    pour chaque caisse posée dans une zone de score \textbf{dont la couleur
+    correspond à $X$}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Temporisation}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.DT} & 0.1 & Nombre de secondes représentées par un tick. \\
+\code{config.GAME\_DURATION} & 120.0 & Durée totale de la partie, en
+    secondes ($=$ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
+\code{config.TOTAL\_TICKS} & 1200 & Nombre de ticks dans une partie. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Caisses initiales}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.INITIAL\_BOXES} & liste de 11 tuples & La disposition de départ
+    fixe : chaque entrée est \code{(x, y, angle\_degrees, color)} --- la
+    position initiale du centre de la caisse, son orientation exprimée comme
+    un angle en degrés depuis l'axe $+x$, et sa couleur de départ
+    (\code{0} ou \code{1}). \\
+\bottomrule
+\end{longtable}
+
+\end{document}

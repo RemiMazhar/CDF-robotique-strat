@@ -1,0 +1,414 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{parskip}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!50!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black,
+    pdftitle={Robot Strategy Game --- Agent Author's Guide},
+    pdfauthor={RobotX},
+}
+
+\definecolor{codebg}{rgb}{0.96,0.96,0.96}
+\lstdefinestyle{py}{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    keywordstyle=\color{blue!60!black}\bfseries,
+    commentstyle=\color{green!40!black}\itshape,
+    stringstyle=\color{red!50!black},
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=1em,
+    xrightmargin=1em,
+}
+\lstdefinestyle{shell}{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    breaklines=true,
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{gray!40},
+    xleftmargin=1em,
+    xrightmargin=1em,
+}
+\lstset{style=py}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\func}[1]{\texttt{#1}}
+
+\title{\textbf{Robotics French Cup Strategy Simulator}\\[0.3em]\large Agent Author's Guide}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\tableofcontents
+\newpage
+
+% ============================================================================
+\section{Overview}
+
+A 2-player game simulating the 2026 Robotics French Cup, to be played by python agents.
+Two circular robots compete on a rectangular map to collect, recolor, and
+deposit ``boxes'' for points.
+
+As an agent author, you will:
+\begin{itemize}[nosep]
+    \item write Python modules in \code{agents/} that decide what your robot
+          does each tick,
+    \item select which agent plays which player in \code{agents\_config.py},
+    \item run and watch games with the \code{play.py} launcher.
+\end{itemize}
+
+% ============================================================================
+\section{The game, conceptually}
+
+\begin{description}[leftmargin=1.2cm,style=nextline]
+    \item[The map] A rectangle containing non-overlapping rectangular areas:
+        player 0's area, player 1's area, and one or more \emph{scoring
+        areas}.
+    \item[Boxes] Identical-sized rectangles scattered on the map. Each box
+        has a \textbf{color} (\code{0} or \code{1}) and can be picked up by robots.
+    \item[Robots] Each player controls one circular robot starting in their
+        own area. A robot can rotate freely, move forward/backward, pick up a nearby box,
+        change the color of a nearby box, or lay down a box it is holding.
+    \item[Turns] Time is discretized into \emph{ticks}. Each tick, player 0
+        then player 1 gets to call \func{make\_decision()} once.
+        \textbf{Exactly one action} may be taken per turn.
+    \item[Scoring] Computed at game end:
+        \begin{itemize}[nosep]
+            \item every box sitting in player $X$'s own area $\rightarrow$
+                  \textbf{+\code{config.POINTS\_OWN\_AREA}} for $X$ (regardless of
+                  the box's color);
+            \item every box sitting in a scoring area whose color is $X$
+                  $\rightarrow$ \textbf{+\code{config.POINTS\_SCORING\_AREA}} for
+                  $X$;
+            \item boxes currently held by a robot score nothing.
+        \end{itemize}
+\end{description}
+
+% ============================================================================
+\section{Game rules in detail}
+\label{sec:one-action}
+
+\begin{itemize}
+    \item \textbf{One action per turn}: \func{make\_decision()} may call
+          exactly one action function. \func{rotate} doesn't count as an action
+          and can be called an arbitrary number of times every turn.
+    \item \textbf{Lay-down placement}: fixed distance
+          (\code{config.LAY\_DOWN\_DISTANCE}) directly in front of the robot,
+          oriented along the robot's current facing direction. Fails if the spot is out
+          of map bounds or overlaps another box.
+    \item \textbf{Box rotation}: boxes take the
+          robot's orientation when laid down.
+    \item \textbf{Initial layout}: fully config-defined and fixed.
+    \item \textbf{Failed actions don't consume the turn}: if an action
+          raises \code{GameError} (e.g.\ \func{lay\_down} blocked,
+          \func{pickup} out of reach), your turn is \emph{not} used up, so
+          you can try something else.
+    \item \textbf{Movement collision}: the robot stops just before hitting
+          the map edge, the other robot, or a laid-down box.
+    \item \textbf{Held boxes don't score} and are not physical obstacles
+          for movement.
+\end{itemize}
+
+% ============================================================================
+\section{Getting started}
+
+\subsection{Running a game}
+
+Use \code{play.py} with your regular system Python (\code{python} /
+\code{python3} / \code{py}) from the project root.
+
+\begin{lstlisting}[style=shell,language=bash]
+python play.py run                  # run a game, print progress + final score
+python play.py run --quiet          # suppress per-tick error logging
+python play.py run --save           # also save a timestamped game to saved_games/
+python play.py run --save --view    # run, save, then immediately replay it
+python play.py view <history.json>  # replay a game from saved_games/ (or any path)
+\end{lstlisting}
+
+\subsection{Choosing which agent plays}
+
+Edit \code{agents\_config.py} at the project root:
+
+\begin{lstlisting}
+PLAYER0_AGENT = "agents.simple_agent"
+PLAYER1_AGENT = "agents.idle_agent"
+\end{lstlisting}
+
+Each string is a module path under \code{agents/}, loaded dynamically. Both
+slots can name the \emph{same} module to make an agent play against itself.
+
+% ============================================================================
+\section{Writing your own agent}
+
+Create \code{agents/my\_agent.py} defining a class \code{Agent} with a
+\func{make\_decision(self)} method:
+
+\begin{lstlisting}
+import interface
+
+class Agent:
+    def make_decision(self):
+        player = interface.me()
+        accessible = interface.get_accessible_boxes(player)
+        if accessible:
+            interface.pickup(accessible[0].id)
+        else:
+            interface.move(10.0)
+\end{lstlisting}
+
+Then point \code{agents\_config.PLAYER0\_AGENT} (or \code{PLAYER1\_AGENT})
+at \code{"agents.my\_agent"} and run \code{python play.py run --view}.
+
+Look at \code{agents/random\_agent.py} for an example.
+
+\subsection{Agent memory}
+\label{sec:memory}
+
+The runner creates one \code{Agent()} \emph{instance} per player, even
+when \code{PLAYER0\_AGENT} and \code{PLAYER1\_AGENT} both name the same
+module. That means your agent can have a memory if you need it:
+
+\begin{lstlisting}
+class Agent:
+    def __init__(self):
+        self.visited = set()
+
+    def make_decision(self):
+        player = interface.me()
+        self.visited.add(interface.get_position(player))
+        # ...
+\end{lstlisting}
+
+% ============================================================================
+\newpage
+\section{The agent interface (\code{interface})}
+
+Agents \code{import interface} (and typically \code{config} for constants
+like \code{config.MAX\_MOVE\_SPEED}).
+
+\subsection{Information functions}
+\emph{Free to call, any number of times.}
+
+\begin{longtable}{p{6.7cm}p{8.3cm}}
+\toprule
+\textbf{Function} & \textbf{Returns} \\
+\midrule
+\endhead
+\func{interface.me()} & This agent's player index (0 or 1) \\
+\func{interface.opponent()} & \code{1 - me()} \\
+\func{interface.get\_position(player)} & \code{(x, y)} center of player's robot \\
+\func{interface.get\_orientation(player)} & Unit vector player's robot is facing \\
+\func{interface.get\_map()} & The \code{Map} object (\code{.width}, \code{.height}, \code{.areas}) \\
+\func{interface.get\_area\_containing(position)} & The \code{Area} that contains \code{position}, or \code{None} if it is in no area \\
+\func{interface.get\_area(area\_id)} & The \code{Area} with that id, or \code{None} \\
+\func{interface.get\_area\_center(area\_id)} & \code{(x, y)} center of that area \\
+\func{interface.get\_boxes()} & All \code{Box} objects (on ground and held) \\
+\func{interface.get\_box(box\_id)} & The \code{Box} with that id, or \code{None} \\
+\func{interface.get\_accessible\_boxes(player)} & Boxes on the ground within reach of \code{player} \\
+\func{interface.get\_boxes\_held(player)} & Boxes currently held by \code{player} \\
+\func{interface.is\_accessible(player, box\_id)} & Is the box on the ground and within reach? \\
+\func{interface.is\_colliding(player, amount)} & Would moving forward by \code{amount} collide (edge/robot/box)? \\
+\func{interface.get\_box\_distance(player, box\_id)} & Circle-to-rectangle distance, robot $\to$ box \\
+\func{interface.get\_box\_direction(player, box\_id)} & Unit vector from robot center toward box center \\
+\func{interface.get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
+\func{interface.get\_area\_direction(player, area\_id)} & Unit vector from robot center toward area center \\
+\func{interface.get\_score(player)} & Score \code{player} would get if the game ended right now \\
+\bottomrule
+\end{longtable}
+
+\subsection{Action functions}
+\emph{Exactly one per \func{interface.make\_decision()} (except \func{rotate}, which is free).}
+
+\begin{longtable}{p{6.7cm}p{8.3cm}}
+\toprule
+\textbf{Function} & \textbf{Effect} \\
+\midrule
+\endhead
+\func{interface.move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision \\
+\func{interface.rotate(new\_direction)} & Face \code{new\_direction}\\
+\func{interface.pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full) \\
+\func{interface.set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1 \\
+\func{interface.lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds) \\
+\bottomrule
+\end{longtable}
+
+All action functions may raise:
+\begin{itemize}[nosep]
+    \item \code{interface.ActionError} if a second action is attempted in
+          the same turn.
+    \item \code{game.GameError} if the action itself is invalid (out of
+          reach, blocked, etc.). This does \textbf{not} consume the
+          turn, so you can recover and try something else.
+\end{itemize}
+
+% ============================================================================
+\section{Data classes}
+
+These are the objects returned by \code{interface} functions.
+
+\begin{description}[leftmargin=2.4cm,style=nextline]
+    \item[\code{Box(id, position, orientation, color, owner)}]
+        A box on the map. \code{owner == -1} means it is sitting on the
+        ground; otherwise \code{owner} is the index of the player currently
+        holding it.
+        \code{color} is \code{0} or \code{1}; \code{orientation} is a unit
+        vector along its width axis.
+    \item[\code{Area(id, type, x, y, width, height)}]
+        An axis-aligned rectangular zone. \code{type} is \code{0}
+        (player 0's area), \code{1} (player 1's area), or \code{2}
+        (a scoring area).
+    \item[\code{Map(width, height, areas)}]
+        The static map: overall dimensions plus the list of all
+        \code{Area} objects (player areas and scoring areas together).
+\end{description}
+
+% ============================================================================
+\section{Constants reference}
+
+\subsubsection*{Map}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.MAP\_WIDTH} & 1000.0 & Width of the playing field, in game units (the
+    \code{x} extent; recall \code{(0, 0)} is the top-left corner). \\
+\code{config.MAP\_HEIGHT} & 600.0 & Height of the playing field (the \code{y}
+    extent). \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Areas}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & \code{(x, y, width,
+    height)} rectangle defining player 0's home area. \\
+\code{config.PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Same, for player 1
+    (\code{Area.type == 1}). \\
+\code{config.SCORING\_AREAS} & \scriptsize list of 2 rects & List of \code{(x, y,
+    width, height)} rectangles, each becoming an \code{Area} with
+    \code{type == 2}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Robot starting positions and orientations}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.PLAYER0\_START} & (75, 300) & \code{(x, y)} spawn position of player
+    0's robot --- inside \code{PLAYER0\_AREA}. \\
+\code{config.PLAYER0\_START\_ANGLE} & 0.0 & Initial facing angle of player 0's
+    robot, in \textbf{degrees} measured from the $+x$ axis ($0^\circ$ = facing
+    right, toward the center of the map). \\
+\code{config.PLAYER1\_START} & (925, 300) & Spawn position of player 1's robot. \\
+\code{config.PLAYER1\_START\_ANGLE} & 180.0 & Initial facing angle of player 1's \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Robot physics}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.ROBOT\_RADIUS} & 20.0 & Radius of the circular robot body. \\
+\code{config.MAX\_MOVE\_SPEED} & 10.0 & The largest \code{|amount|} a single
+    \func{move} call will actually apply, per tick. \\
+\code{config.MAX\_BOXES\_HELD} & 3 & Maximum number of boxes a robot can carry at
+    once. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Box dimensions}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.BOX\_WIDTH} & 40.0 & Width of a box. \\
+\code{config.BOX\_HEIGHT} & 25.0 & Height of a box. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Interaction distances}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.ACCESSIBILITY\_RADIUS} & 25.0 & Maximum circle-to-rectangle distance
+    (robot center $\to$ nearest point on the box) at which a box counts as
+    ``accessible'' (i.e.\ within reach for \func{pickup} and
+    \func{set\_color}). \\
+\code{config.LAY\_DOWN\_DISTANCE} & 45.0 & Fixed distance from the robot's center
+    to the \emph{center} of a box placed via \func{lay\_down}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Scoring}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.POINTS\_OWN\_AREA} & 3 & Points awarded to player $X$ for each box
+    sitting in $X$'s own area. \\
+\code{config.POINTS\_SCORING\_AREA} & 5 & Points awarded to player $X$ for each
+    box sitting in a scoring area \textbf{whose color matches $X$}. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Timing}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.DT} & 0.1 & Seconds represented by one tick. \\
+\code{config.GAME\_DURATION} & 120.0 & Total game length, in seconds
+    ($= $ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
+\code{config.TOTAL\_TICKS} & 1200 & Number of ticks in a game. \\
+\bottomrule
+\end{longtable}
+
+\subsubsection*{Initial boxes}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.INITIAL\_BOXES} & list of 11 tuples & The fixed starting layout: each
+    entry is \code{(x, y, angle\_degrees, color)} --- the box's initial
+    center position, its orientation expressed as an angle in degrees from
+    the $+x$ axis,
+    and its starting \code{color} (\code{0} or \code{1}).\\
+\bottomrule
+\end{longtable}
+
+\end{document}
