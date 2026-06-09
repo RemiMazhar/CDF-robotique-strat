@@ -162,10 +162,12 @@ slots can name the \emph{same} module to make an agent play against itself.
 \section{Writing your own agent}
 
 Create \code{agents/my\_agent.py} defining a class \code{Agent} with a
-\func{make\_decision(self)} method:
+\func{make\_decision(self)} method. Don't forget to \code{import interface} 
+and \code{import config}.
 
 \begin{lstlisting}
 import interface
+import config
 
 class Agent:
     def make_decision(self):
@@ -202,10 +204,7 @@ class Agent:
 
 % ============================================================================
 \newpage
-\section{The agent interface (\code{interface})}
-
-Agents \code{import interface} (and typically \code{config} for constants
-like \code{config.MAX\_MOVE\_SPEED}).
+\section{The agent interface (\code{interface} module)}
 
 \subsection{Information functions}
 \emph{Free to call, any number of times.}
@@ -215,41 +214,41 @@ like \code{config.MAX\_MOVE\_SPEED}).
 \textbf{Function} & \textbf{Returns} \\
 \midrule
 \endhead
-\func{interface.me()} & This agent's player index (0 or 1) \\
-\func{interface.opponent()} & \code{1 - me()} \\
-\func{interface.get\_position(player)} & \code{(x, y)} center of player's robot \\
-\func{interface.get\_orientation(player)} & Unit vector player's robot is facing \\
-\func{interface.get\_map()} & The \code{Map} object (\code{.width}, \code{.height}, \code{.areas}) \\
-\func{interface.get\_area\_containing(position)} & The \code{Area} that contains \code{position}, or \code{None} if it is in no area \\
-\func{interface.get\_area(area\_id)} & The \code{Area} with that id, or \code{None} \\
-\func{interface.get\_area\_center(area\_id)} & \code{(x, y)} center of that area \\
-\func{interface.get\_boxes()} & All \code{Box} objects (on ground and held) \\
-\func{interface.get\_box(box\_id)} & The \code{Box} with that id, or \code{None} \\
-\func{interface.get\_accessible\_boxes(player)} & Boxes on the ground within reach of \code{player} \\
-\func{interface.get\_boxes\_held(player)} & Boxes currently held by \code{player} \\
-\func{interface.is\_accessible(player, box\_id)} & Is the box on the ground and within reach? \\
-\func{interface.is\_colliding(player, amount)} & Would moving forward by \code{amount} collide (edge/robot/box)? \\
-\func{interface.get\_box\_distance(player, box\_id)} & Circle-to-rectangle distance, robot $\to$ box \\
-\func{interface.get\_box\_direction(player, box\_id)} & Unit vector from robot center toward box center \\
-\func{interface.get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
-\func{interface.get\_area\_direction(player, area\_id)} & Unit vector from robot center toward area center \\
-\func{interface.get\_score(player)} & Score \code{player} would get if the game ended right now \\
+\func{me()} & This agent's player index (0 or 1) \\
+\func{opponent()} & \code{1 - me()} \\
+\func{get\_position(player)} & \code{(x, y)} center of player's robot \\
+\func{get\_orientation(player)} & Unit vector player's robot is facing \\
+\func{get\_map()} & The \code{Map} object (\code{.width}, \code{.height}, \code{.areas}) \\
+\func{get\_area\_containing(position)} & The \code{Area} that contains \code{position}, or \code{None} if it is in no area \\
+\func{get\_area(area\_id)} & The \code{Area} with that id, or \code{None} \\
+\func{get\_area\_center(area\_id)} & \code{(x, y)} center of that area \\
+\func{get\_boxes()} & All \code{Box} objects (on ground and held) \\
+\func{get\_box(box\_id)} & The \code{Box} with that id, or \code{None} \\
+\func{get\_accessible\_boxes(player)} & Boxes on the ground within reach of \code{player} \\
+\func{get\_boxes\_held(player)} & Boxes currently held by \code{player} \\
+\func{is\_accessible(player, box\_id)} & Is the box on the ground and within reach? \\
+\func{is\_colliding(player, amount)} & Would moving forward by \code{amount} collide (edge/robot/box)? \\
+\func{get\_box\_distance(player, box\_id)} & Circle-to-rectangle distance, robot $\to$ box \\
+\func{get\_box\_direction(player, box\_id)} & Unit vector from robot center toward box center \\
+\func{get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
+\func{get\_area\_direction(player, area\_id)} & Unit vector from robot center toward area center \\
+\func{get\_score(player)} & Score \code{player} would get if the game ended right now \\
 \bottomrule
 \end{longtable}
 
 \subsection{Action functions}
-\emph{Exactly one per \func{interface.make\_decision()} (except \func{rotate}, which is free).}
+\emph{Exactly one per \func{make\_decision()} (except \func{rotate}, which is free).}
 
 \begin{longtable}{p{6.7cm}p{8.3cm}}
 \toprule
 \textbf{Function} & \textbf{Effect} \\
 \midrule
 \endhead
-\func{interface.move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision \\
-\func{interface.rotate(new\_direction)} & Face \code{new\_direction}\\
-\func{interface.pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full) \\
-\func{interface.set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1 \\
-\func{interface.lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds) \\
+\func{move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision \\
+\func{rotate(new\_direction)} & Face \code{new\_direction}\\
+\func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full) \\
+\func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1 \\
+\func{lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds) \\
 \bottomrule
 \end{longtable}
 
@@ -284,7 +283,7 @@ These are the objects returned by \code{interface} functions.
 \end{description}
 
 % ============================================================================
-\section{Constants reference}
+\section{Constants reference (\code{config} module)}
 
 \subsubsection*{Map}
 \begin{longtable}{p{4.7cm}p{2cm}p{8cm}}

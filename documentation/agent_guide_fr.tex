@@ -170,10 +170,12 @@ pour faire jouer un agent contre lui-même.
 \section{Écrire son propre agent}
 
 Créez \code{agents/my\_agent.py} en y définissant une classe \code{Agent}
-dotée d'une méthode \func{make\_decision(self)} :
+dotée d'une méthode \func{make\_decision(self)}. N'oubliez pas d'importer 
+\code{interface} et \code{config}.
 
 \begin{lstlisting}
 import interface
+import config
 
 class Agent:
     def make_decision(self):
@@ -187,7 +189,7 @@ class Agent:
 
 Pointez ensuite \code{agents\_config.PLAYER0\_AGENT} (ou
 \code{PLAYER1\_AGENT}) vers \code{"agents.my\_agent"} et lancez
-\code{python play.py run --view}.
+\code{python play.py run -{}-view}.
 
 Consultez \code{agents/random\_agent.py} pour un exemple.
 
@@ -211,11 +213,7 @@ class Agent:
 
 % ============================================================================
 \newpage
-\section{L'interface de l'agent (\code{interface})}
-
-Les agents font \code{import interface} (et généralement aussi
-\code{import config} pour des constantes telles que
-\code{config.MAX\_MOVE\_SPEED}).
+\section{L'interface de l'agent (module \code{interface})}
 
 \subsection{Fonctions d'information}
 \emph{Peuvent être appelées librement, autant de fois que voulu.}
@@ -225,30 +223,30 @@ Les agents font \code{import interface} (et généralement aussi
 \textbf{Fonction} & \textbf{Retourne} \\
 \midrule
 \endhead
-\func{interface.me()} & L'indice du joueur de cet agent (0 ou 1) \\
-\func{interface.opponent()} & \code{1 - me()} \\
-\func{interface.get\_position(player)} & Centre \code{(x, y)} du robot du joueur \\
-\func{interface.get\_orientation(player)} & Vecteur unitaire \code{(x, y)} indiquant la direction du robot du joueur \\
-\func{interface.get\_map()} & L'objet \code{Map} (\code{.width}, \code{.height}, \code{.areas}) \\
-\func{interface.get\_area\_containing(position)} & La zone \code{Area} contenant \code{position}, ou \code{None} si elle n'est dans aucune zone \\
-\func{interface.get\_area(area\_id)} & La zone \code{Area} ayant cet identifiant, ou \code{None} \\
-\func{interface.get\_area\_center(area\_id)} & Centre \code{(x, y)} de cette zone \\
-\func{interface.get\_boxes()} & Tous les objets \code{Box} (au sol et transportés) \\
-\func{interface.get\_box(box\_id)} & La caisse \code{Box} ayant cet identifiant, ou \code{None} \\
-\func{interface.get\_accessible\_boxes(player)} & Caisses au sol à portée de \code{player} \\
-\func{interface.get\_boxes\_held(player)} & Caisses actuellement transportées par \code{player} \\
-\func{interface.is\_accessible(player, box\_id)} & La caisse est-elle au sol et à portée ? \\
-\func{interface.is\_colliding(player, amount)} & Avancer de \code{amount} provoquerait-il une collision (bord/robot/caisse) ? \\
-\func{interface.get\_box\_distance(player, box\_id)} & Distance cercle-rectangle, du robot vers la caisse \\
-\func{interface.get\_box\_direction(player, box\_id)} & Vecteur unitaire du centre du robot vers le centre de la caisse \\
-\func{interface.get\_area\_distance(player, area\_id)} & Distance du centre du robot au rectangle de la zone (0 si à l'intérieur) \\
-\func{interface.get\_area\_direction(player, area\_id)} & Vecteur unitaire du centre du robot vers le centre de la zone \\
-\func{interface.get\_score(player)} & Score que \code{player} obtiendrait si la partie se terminait maintenant \\
+\func{me()} & L'indice du joueur de cet agent (0 ou 1) \\
+\func{opponent()} & \code{1 - me()} \\
+\func{get\_position(player)} & Centre \code{(x, y)} du robot du joueur \\
+\func{get\_orientation(player)} & Vecteur unitaire \code{(x, y)} indiquant la direction du robot du joueur \\
+\func{get\_map()} & L'objet \code{Map} (\code{.width}, \code{.height}, \code{.areas}) \\
+\func{get\_area\_containing(position)} & La zone \code{Area} contenant \code{position}, ou \code{None} si elle n'est dans aucune zone \\
+\func{get\_area(area\_id)} & La zone \code{Area} ayant cet identifiant, ou \code{None} \\
+\func{get\_area\_center(area\_id)} & Centre \code{(x, y)} de cette zone \\
+\func{get\_boxes()} & Tous les objets \code{Box} (au sol et transportés) \\
+\func{get\_box(box\_id)} & La caisse \code{Box} ayant cet identifiant, ou \code{None} \\
+\func{get\_accessible\_boxes(player)} & Caisses au sol à portée de \code{player} \\
+\func{get\_boxes\_held(player)} & Caisses actuellement transportées par \code{player} \\
+\func{is\_accessible(player, box\_id)} & La caisse est-elle au sol et à portée ? \\
+\func{is\_colliding(player, amount)} & Avancer de \code{amount} provoquerait-il une collision (bord/robot/caisse) ? \\
+\func{get\_box\_distance(player, box\_id)} & Distance cercle-rectangle, du robot vers la caisse \\
+\func{get\_box\_direction(player, box\_id)} & Vecteur unitaire du centre du robot vers le centre de la caisse \\
+\func{get\_area\_distance(player, area\_id)} & Distance du centre du robot au rectangle de la zone (0 si à l'intérieur) \\
+\func{get\_area\_direction(player, area\_id)} & Vecteur unitaire du centre du robot vers le centre de la zone \\
+\func{get\_score(player)} & Score que \code{player} obtiendrait si la partie se terminait maintenant \\
 \bottomrule
 \end{longtable}
 
 \subsection{Fonctions d'action}
-\emph{Exactement une par appel à \func{interface.make\_decision()} (sauf
+\emph{Exactement une par appel à \func{make\_decision()} (sauf
 \func{rotate}, qui est gratuite).}
 
 \begin{longtable}{p{6.7cm}p{8.3cm}}
@@ -256,11 +254,11 @@ Les agents font \code{import interface} (et généralement aussi
 \textbf{Fonction} & \textbf{Effet} \\
 \midrule
 \endhead
-\func{interface.move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision \\
-\func{interface.rotate(new\_direction)} & Oriente le robot vers \code{new\_direction} \\
-\func{interface.pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines) \\
-\func{interface.set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1 \\
-\func{interface.lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites) \\
+\func{move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision \\
+\func{rotate(new\_direction)} & Oriente le robot vers \code{new\_direction} \\
+\func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines) \\
+\func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1 \\
+\func{lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites) \\
 \bottomrule
 \end{longtable}
 
@@ -295,7 +293,7 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \end{description}
 
 % ============================================================================
-\section{Référence des constantes}
+\section{Référence des constantes (module \code{config})}
 
 \subsubsection*{Carte}
 \begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
