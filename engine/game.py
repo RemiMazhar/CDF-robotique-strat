@@ -46,6 +46,7 @@ class Robot:
     position: Tuple[float, float]
     orientation: Tuple[float, float]   # unit vector the robot is facing
     held_boxes: List[int] = field(default_factory=list)
+    cooldown: int = 0   # turns remaining until next action allowed (0 = free)
 
 
 # ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -223,11 +224,25 @@ def is_move_colliding(game: GameState, player: int, amount: float) -> bool:
 class GameError(Exception):
     """Raised when a requested action is invalid."""
 
+
+def _require_not_busy(robot: Robot) -> None:
+    """Raise GameError if the robot is still on cooldown from a previous action."""
+    if robot.cooldown > 0:
+        raise GameError(
+            f"Player {robot.player}'s robot is busy for {robot.cooldown} more tick(s)"
+        )
+
+
 def do_move(game: GameState, player: int, amount: float) -> None:
     """Move the robot up to |amount| distance (capped at MAX_MOVE_SPEED).
     Stops just before the first collision with the map edge, the other robot,
-    or any laid-down box."""
+    or any laid-down box.
+
+    Raises GameError if the robot is still on cooldown from a previous action.
+    On success (including a 0-distance move due to immediate collision),
+    starts a new cooldown of config.MOVE_COOLDOWN turns."""
     robot  = game.robots[player]
+    _require_not_busy(robot)
     other  = game.robots[1 - player]
     sign   = 1.0 if amount >= 0.0 else -1.0
     target = min(abs(amount), config.MAX_MOVE_SPEED)
@@ -268,15 +283,23 @@ def do_move(game: GameState, player: int, amount: float) -> None:
         robot.position[0] + ox * actual,
         robot.position[1] + oy * actual,
     )
+    robot.cooldown = config.MOVE_COOLDOWN
 
 
 def do_rotate(game: GameState, player: int, new_direction: Tuple[float, float]) -> None:
-    """Rotate the robot to face new_direction (normalised automatically)."""
-    game.robots[player].orientation = _normalize(new_direction)
+    """Rotate the robot to face new_direction (normalised automatically).
+
+    Raises GameError if the robot is still on cooldown from a previous action
+    (a robot frozen by move/pickup/set_color/lay_down cannot rotate either).
+    Does not itself start a cooldown."""
+    robot = game.robots[player]
+    _require_not_busy(robot)
+    robot.orientation = _normalize(new_direction)
 
 
 def do_pickup(game: GameState, player: int, box_id: int) -> None:
     robot = game.robots[player]
+    _require_not_busy(robot)
     if len(robot.held_boxes) >= config.MAX_BOXES_HELD:
         raise GameError(f"Player {player} cannot hold more than {config.MAX_BOXES_HELD} boxes")
     if not is_box_accessible(game, player, box_id):
@@ -284,20 +307,26 @@ def do_pickup(game: GameState, player: int, box_id: int) -> None:
     box = game.get_box(box_id)
     box.owner = player
     robot.held_boxes.append(box_id)
+    robot.cooldown = config.PICKUP_COOLDOWN
 
 
 def do_set_color(game: GameState, player: int, box_id: int, color: int) -> None:
+    robot = game.robots[player]
+    _require_not_busy(robot)
     if color not in (0, 1):
         raise GameError("Color must be 0 or 1")
     if not is_box_accessible(game, player, box_id):
         raise GameError(f"Box {box_id} is not accessible by player {player}")
     game.get_box(box_id).color = color
+    robot.cooldown = config.SET_COLOR_COOLDOWN
 
 
 def do_lay_down(game: GameState, player: int, box_id: int) -> None:
     """Place a held box directly in front of the robot.
-    Raises GameError if the target position is out of bounds or overlaps another box."""
+    Raises GameError if the robot is busy, the target position is out of
+    bounds, or it overlaps another box."""
     robot = game.robots[player]
+    _require_not_busy(robot)
     if box_id not in robot.held_boxes:
         raise GameError(f"Player {player} is not holding box {box_id}")
 
@@ -326,6 +355,7 @@ def do_lay_down(game: GameState, player: int, box_id: int) -> None:
     box.orientation = target_orient
     box.owner       = -1
     robot.held_boxes.remove(box_id)
+    robot.cooldown  = config.LAY_DOWN_COOLDOWN
 
 
 # ── Scoring ───────────────────────────────────────────────────────────────────

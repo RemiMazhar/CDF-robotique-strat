@@ -10,7 +10,7 @@ editing the engine itself.
 | Module | Responsibility |
 |---|---|
 | `config.py` | All tunable constants (map/area geometry, robot & box physics, scoring, timing, `INITIAL_BOXES`). Pure data, no logic. |
-| `game.py` | The actual simulation: `Area`, `Map`, `Box`, `Robot`, `GameState` dataclasses; geometry helpers (`_normalize`, `_dot`, `_box_corners`, `_circle_rect_distance`, `_circle_rect_collides`, `_obb_obb_collides`, `_circle_in_map`); action implementations (`do_move`, `do_rotate`, `do_pickup`, `do_set_color`, `do_lay_down`); `is_box_accessible`, `is_move_colliding`, `compute_scores`; `GameError`. |
+| `game.py` | The actual simulation: `Area`, `Map`, `Box`, `Robot`, `GameState` dataclasses; geometry helpers (`_normalize`, `_dot`, `_box_corners`, `_circle_rect_distance`, `_circle_rect_collides`, `_obb_obb_collides`, `_circle_in_map`); action implementations (`do_move`, `do_rotate`, `do_pickup`, `do_set_color`, `do_lay_down`), each gated by the shared `_require_not_busy` cooldown check; `is_box_accessible`, `is_move_colliding`, `compute_scores`; `GameError`. |
 | `interface.py` | The agent-facing API. Wraps `game.py` behind a `_Context`/`_ctx()` mechanism that enforces the one-action-per-turn rule and exposes only player-scoped, read-only-feeling free functions. **The only engine module agent code imports.** |
 | `display.py` | pygame rendering: `init_window`, `draw_state`, `handle_events`, `show`. Imports `game` private helpers directly (`_box_corners`, etc.) to draw oriented rectangles. |
 | `history.py` | JSON (de)serialization of `GameState` snapshots: `snapshot`, `save`, `load`, `load_map`, `load_frame`, `_map_to_dict`. |
@@ -38,6 +38,7 @@ class Robot:
     position: Tuple[float, float]
     orientation: Tuple[float, float]
     held_boxes: List[int]              # box ids, capped at MAX_BOXES_HELD
+    cooldown: int                      # turns remaining until next action allowed (0 = free)
 
 @dataclass
 class Area:
@@ -94,6 +95,27 @@ player1 area (1), then each scoring area (2, 3, …) via a `next_id` counter.
   orientation. Fails with `GameError` (turn not consumed) if the spot is out
   of map bounds or SAT-overlaps another box.
 
+## Action costs / cooldown (`game.py`)
+
+`Robot.cooldown` tracks how many more ticks the robot is "busy" after
+performing a costly action (0 = free). `_require_not_busy(robot)` is called
+first by **all five** `do_*` functions — including `do_rotate` — and raises
+`GameError` if `cooldown > 0`, so a busy robot is fully frozen (it can't even
+turn in place).
+
+On success, `do_move`, `do_pickup`, `do_set_color` and `do_lay_down` set
+`robot.cooldown = config.<ACTION>_COOLDOWN` (`MOVE_COOLDOWN`,
+`PICKUP_COOLDOWN`, `SET_COLOR_COOLDOWN`, `LAY_DOWN_COOLDOWN`). This includes a
+0-distance `do_move` (e.g. driving straight into a wall still "takes time").
+`do_rotate` never sets `cooldown`.
+
+`run_game.py`'s per-player `finally` block decrements `robot.cooldown` by 1
+(floored at 0) once per tick, after that tick's action attempt — this is what
+gives `X_COOLDOWN = N` the meaning "robot occupied for N total turns
+including the one the action succeeded on" (N=1 ⇒ no extra delay; N>1 ⇒ N-1
+additional frozen turns). `interface.get_cooldown(player)` exposes the raw
+value to agents read-only.
+
 ## The one-action rule (`interface._Context`)
 
 ```python
@@ -114,10 +136,17 @@ Each action wrapper (`move`, `pickup`, `set_color`, `lay_down`) calls
 `ctx.require_action_available()` *before* delegating to the corresponding
 `do_*` function in `game.py`, and `ctx.mark_action_taken()` only on success.
 `rotate` is the deliberate exception — it calls `do_rotate` directly without
-touching `action_taken`, making it free and turn-preserving. A `GameError`
-raised by the underlying `do_*` propagates *before* `mark_action_taken()` is
-reached, which is exactly why failed actions don't consume the turn — no
-special-casing needed, it falls out of the call order.
+touching `action_taken`, so it never counts toward the one-action-per-turn
+limit and is turn-preserving. A `GameError` raised by the underlying `do_*`
+propagates *before* `mark_action_taken()` is reached, which is exactly why
+failed actions don't consume the turn — no special-casing needed, it falls
+out of the call order.
+
+Note that `rotate` being exempt from `action_taken`/`ActionError` does **not**
+make it unconditionally free: like the other four action functions, `do_rotate`
+still calls `_require_not_busy` first (see "Action costs / cooldown" above),
+so a robot frozen by a previous move/pickup/set_color/lay_down also can't
+rotate — that call raises `GameError` (still turn-preserving).
 
 ## Agent loading (`run_game.py`)
 
@@ -201,13 +230,15 @@ regenerates a working one on the target machine on first run instead.
 ## History format (`history.py`)
 
 `snapshot(state)` captures `tick`, all robots (`position`, `orientation`,
-`held_boxes`), and all boxes (`position`, `orientation`, `color`, `owner`).
-`save(frames, game_map, path)` writes one JSON document: the static map
-once (`_map_to_dict`, preserving `Area.id`/`type`/geometry) plus the list of
-per-tick frames (`TOTAL_TICKS + 1` of them, including the initial state).
+`held_boxes`, `cooldown`), and all boxes (`position`, `orientation`, `color`,
+`owner`). `save(frames, game_map, path)` writes one JSON document: the static
+map once (`_map_to_dict`, preserving `Area.id`/`type`/geometry) plus the list
+of per-tick frames (`TOTAL_TICKS + 1` of them, including the initial state).
 `load`/`load_map`/`load_frame` reconstruct `Map`/`GameState` objects from
 that JSON for replay — note `load_frame` needs the loaded `Map` to build a
-full `GameState` since frames don't repeat static map data.
+full `GameState` since frames don't repeat static map data. `load_frame` reads
+`cooldown` via `r.get("cooldown", 0)` so history files saved before this field
+existed still load correctly (robots default to "free").
 
 ## Display (`display.py`)
 

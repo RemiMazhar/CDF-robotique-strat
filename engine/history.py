@@ -35,6 +35,7 @@ def snapshot(state: GameState) -> dict:
                 "position":    list(r.position),
                 "orientation": list(r.orientation),
                 "held_boxes":  list(r.held_boxes),
+                "cooldown":    r.cooldown,
             }
             for r in state.robots
         ],
@@ -105,6 +106,7 @@ def load_frame(data: dict, index: int) -> GameState:
             position=tuple(r["position"]),
             orientation=tuple(r["orientation"]),
             held_boxes=list(r["held_boxes"]),
+            cooldown=r.get("cooldown", 0),
         )
         for r in frame["robots"]
     ]

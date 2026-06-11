@@ -63,6 +63,9 @@ _C_ROBOT_FILL    = {0: ( 20,  70, 200), 1: (190,  30,  30)}
 _C_ROBOT_OUTLINE = (255, 255, 255)
 _C_ROBOT_DIR     = (255, 255, 255)   # orientation line
 
+_C_COOLDOWN_BG   = (255, 165,   0)   # cooldown badge background
+_C_COOLDOWN_TEXT = ( 30,  30,  30)   # cooldown badge text
+
 _C_HUD_BG   = ( 20,  20,  20)
 _C_HUD_TEXT = (220, 220, 220)
 _C_P0_TEXT  = ( 80, 140, 255)
@@ -158,6 +161,17 @@ def _draw_robot(surface, robot, game_state, font_small):
                              (ix, indicator_y, sq, sq))
             pygame.draw.rect(surface, _C_BOX_OUTLINE,
                              (ix, indicator_y, sq, sq), 1)
+
+    # Cooldown badge: small circle with remaining-turns count, bottom-right
+    if robot.cooldown > 0:
+        badge_r = max(7, int(11 * SCALE))
+        bx = sx + radius - badge_r // 2
+        by = sy + radius - badge_r // 2
+        pygame.draw.circle(surface, _C_COOLDOWN_BG, (bx, by), badge_r)
+        pygame.draw.circle(surface, _C_ROBOT_OUTLINE, (bx, by), badge_r, 1)
+        cd_text = font_small.render(str(robot.cooldown), True, _C_COOLDOWN_TEXT)
+        cd_rect = cd_text.get_rect(center=(bx, by))
+        surface.blit(cd_text, cd_rect)
 
     # Player label inside circle
     label = font_small.render(str(robot.player), True, _C_ROBOT_OUTLINE)

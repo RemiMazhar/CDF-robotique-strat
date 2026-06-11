@@ -56,6 +56,9 @@ def run_game(verbose: bool = True, history_path: str | None = None) -> tuple:
                     print(f"[tick {tick:5d}] player {player_id} unhandled exception: {exc}")
             finally:
                 _iface._context = None
+                robot = state.robots[player_id]
+                if robot.cooldown > 0:
+                    robot.cooldown -= 1
 
         state.tick += 1
         frames.append(_history.snapshot(state))

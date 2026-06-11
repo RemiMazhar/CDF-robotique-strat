@@ -12,6 +12,14 @@ Each call to make_decision() may invoke exactly ONE action function
 raises ActionError.  Calling information functions (me, get_position, …)
 is always free.
 
+Cooldown
+--------
+move, pickup, set_color and lay_down each put the robot on a cooldown of
+config.<ACTION>_COOLDOWN turns (including the turn the action is performed
+on).  While get_cooldown(player) > 0, calling ANY of the five action
+functions — including rotate — raises GameError.  rotate itself never
+starts a cooldown.
+
 A failed action (GameError) does NOT consume the turn, so agents can
 safely do pre-checks and fall back gracefully.
 """
@@ -134,6 +142,13 @@ def get_boxes_held(player: int) -> List[Box]:
     return [g.get_box(bid) for bid in g.robots[player].held_boxes]
 
 
+def get_cooldown(player: int) -> int:
+    """Return the number of remaining turns before player's robot can act
+    again (0 = free now). Calling move/rotate/pickup/set_color/lay_down
+    while this is > 0 raises GameError."""
+    return _ctx().game.robots[player].cooldown
+
+
 def is_accessible(player: int, box_id: int) -> bool:
     """Return True if box box_id is on the ground and within reach of player."""
     return is_box_accessible(_ctx().game, player, box_id)
@@ -205,10 +220,15 @@ def get_score(player: int) -> int:
 # If the game rejects the action (GameError) the turn is NOT consumed, so the
 # agent can try a different action.  Two successful action calls per turn
 # raise ActionError.
+#
+# All five functions below (including rotate) raise GameError if
+# get_cooldown(player) > 0 — see the "Cooldown" section in the module
+# docstring.  move/pickup/set_color/lay_down additionally start a new
+# cooldown on success; rotate never does.
 
 def move(amount: float) -> None:
     """Move forward amount distance (negative = backward, capped at MAX_MOVE_SPEED).
-    Stops before any collision."""
+    Stops before any collision. Starts a cooldown of config.MOVE_COOLDOWN turns."""
     ctx = _ctx()
     ctx.require_action_available()
     do_move(ctx.game, ctx.player_id, amount)
@@ -216,14 +236,22 @@ def move(amount: float) -> None:
 
 
 def rotate(new_direction: Tuple[float, float]) -> None:
-    """Rotate to face new_direction (automatically normalised)."""
+    """Rotate to face new_direction (automatically normalised).
+
+    Does not consume the turn (does not count as the one action per
+    make_decision()) and does not itself start a cooldown. However, if the
+    robot is currently on cooldown from a previous move/pickup/set_color/
+    lay_down, this raises GameError (and, like any GameError, does not
+    consume the turn either) — check get_cooldown(me()) first if you want to
+    avoid the exception."""
     ctx = _ctx()
     do_rotate(ctx.game, ctx.player_id, new_direction)
 
 
 def pickup(box_id: int) -> None:
     """Pick up the accessible box with the given id.
-    Raises GameError if not accessible or hands are full."""
+    Raises GameError if not accessible or hands are full.
+    Starts a cooldown of config.PICKUP_COOLDOWN turns on success."""
     ctx = _ctx()
     ctx.require_action_available()
     do_pickup(ctx.game, ctx.player_id, box_id)
@@ -232,7 +260,8 @@ def pickup(box_id: int) -> None:
 
 def set_color(box_id: int, color: int) -> None:
     """Change the color of an accessible box to color (0 or 1).
-    Raises GameError if not accessible."""
+    Raises GameError if not accessible.
+    Starts a cooldown of config.SET_COLOR_COOLDOWN turns on success."""
     ctx = _ctx()
     ctx.require_action_available()
     do_set_color(ctx.game, ctx.player_id, box_id, color)
@@ -241,7 +270,8 @@ def set_color(box_id: int, color: int) -> None:
 
 def lay_down(box_id: int) -> None:
     """Place a held box directly in front of the robot.
-    Raises GameError if the target position is blocked or out of map."""
+    Raises GameError if the target position is blocked or out of map.
+    Starts a cooldown of config.LAY_DOWN_COOLDOWN turns on success."""
     ctx = _ctx()
     ctx.require_action_available()
     do_lay_down(ctx.game, ctx.player_id, box_id)

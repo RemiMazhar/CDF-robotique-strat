@@ -90,6 +90,9 @@ As an agent author, you will:
     \item[Robots] Each player controls one circular robot starting in their
         own area. A robot can rotate freely, move forward/backward, pick up a nearby box,
         change the color of a nearby box, or lay down a box it is holding.
+        Moving, picking up, recoloring and laying down each take real time:
+        they put the robot on a temporary \emph{cooldown} during which it
+        cannot act at all (see Section~\ref{sec:one-action}).
     \item[Turns] Time is discretized into \emph{ticks}. Each tick, player 0
         then player 1 gets to call \func{make\_decision()} once.
         \textbf{Exactly one action} may be taken per turn.
@@ -112,7 +115,8 @@ As an agent author, you will:
 \begin{itemize}
     \item \textbf{One action per turn}: \func{make\_decision()} may call
           exactly one action function. \func{rotate} doesn't count as an action
-          and can be called an arbitrary number of times every turn.
+          and can be called an arbitrary number of times every turn (subject
+          to the cooldown rule below).
     \item \textbf{Lay-down placement}: fixed distance
           (\code{config.LAY\_DOWN\_DISTANCE}) directly in front of the robot,
           oriented along the robot's current facing direction. Fails if the spot is out
@@ -124,6 +128,19 @@ As an agent author, you will:
           raises \code{GameError} (e.g.\ \func{lay\_down} blocked,
           \func{pickup} out of reach), your turn is \emph{not} used up, so
           you can try something else.
+    \item \textbf{Cooldown / temporal cost}: \func{move}, \func{pickup},
+          \func{set\_color} and \func{lay\_down} each occupy the robot for a
+          number of ticks given by their own constant ---
+          \code{config.MOVE\_COOLDOWN}, \code{config.PICKUP\_COOLDOWN},
+          \code{config.SET\_COLOR\_COOLDOWN} and
+          \code{config.LAY\_DOWN\_COOLDOWN} respectively. A value of $N$ means
+          the robot is occupied for $N$ \emph{total} ticks, including the
+          tick the action succeeds on (so $N=1$ means no extra delay, and
+          $N>1$ means $N-1$ additional frozen ticks). While occupied,
+          \textbf{any} action function --- including \func{rotate} --- raises
+          \code{GameError} without consuming the turn. \func{rotate} itself
+          never starts a cooldown. Call \func{get\_cooldown(player)} to check
+          how many ticks remain (0 = free).
     \item \textbf{Movement collision}: the robot stops just before hitting
           the map edge, the other robot, or a laid-down box.
     \item \textbf{Held boxes don't score} and are not physical obstacles
@@ -233,22 +250,25 @@ class Agent:
 \func{get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
 \func{get\_area\_direction(player, area\_id)} & Unit vector from robot center toward area center \\
 \func{get\_score(player)} & Score \code{player} would get if the game ended right now \\
+\func{get\_cooldown(player)} & Ticks remaining until \code{player}'s robot can act again (0 = free now) \\
 \bottomrule
 \end{longtable}
 
 \subsection{Action functions}
-\emph{Exactly one per \func{make\_decision()} (except \func{rotate}, which is free).}
+\emph{Exactly one per \func{make\_decision()} (except \func{rotate}, which
+doesn't count as an action). All five, including \func{rotate}, are blocked
+while the robot is on cooldown --- see Section~\ref{sec:one-action}.}
 
 \begin{longtable}{p{6.7cm}p{8.3cm}}
 \toprule
 \textbf{Function} & \textbf{Effect} \\
 \midrule
 \endhead
-\func{move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision \\
-\func{rotate(new\_direction)} & Face \code{new\_direction}\\
-\func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full) \\
-\func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1 \\
-\func{lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds) \\
+\func{move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision. Starts a cooldown of \code{config.MOVE\_COOLDOWN} ticks \\
+\func{rotate(new\_direction)} & Face \code{new\_direction}. Does not itself start a cooldown\\
+\func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full). Starts a cooldown of \code{config.PICKUP\_COOLDOWN} ticks \\
+\func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1. Starts a cooldown of \code{config.SET\_COLOR\_COOLDOWN} ticks \\
+\func{lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds). Starts a cooldown of \code{config.LAY\_DOWN\_COOLDOWN} ticks \\
 \bottomrule
 \end{longtable}
 
@@ -257,8 +277,10 @@ All action functions may raise:
     \item \code{interface.ActionError} if a second action is attempted in
           the same turn.
     \item \code{game.GameError} if the action itself is invalid (out of
-          reach, blocked, etc.). This does \textbf{not} consume the
-          turn, so you can recover and try something else.
+          reach, blocked, etc.) \textbf{or if the robot is still on cooldown
+          from a previous action} (this applies to \func{rotate} too). This
+          does \textbf{not} consume the turn, so you can recover and try
+          something else.
 \end{itemize}
 
 % ============================================================================
@@ -395,6 +417,27 @@ These are the objects returned by \code{interface} functions.
 \code{config.TOTAL\_TICKS} & 1200 & Number of ticks in a game. \\
 \bottomrule
 \end{longtable}
+
+\subsubsection*{Action costs (temporal)}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
+\midrule
+\endhead
+\code{config.MOVE\_COOLDOWN} & 2 & Total ticks \func{move} occupies the robot
+    for, including the tick it succeeds on. \\
+\code{config.PICKUP\_COOLDOWN} & 5 & Total ticks \func{pickup} occupies the
+    robot for, including the tick it succeeds on. \\
+\code{config.SET\_COLOR\_COOLDOWN} & 5 & Total ticks \func{set\_color}
+    occupies the robot for, including the tick it succeeds on. \\
+\code{config.LAY\_DOWN\_COOLDOWN} & 5 & Total ticks \func{lay\_down} occupies
+    the robot for, including the tick it succeeds on. \\
+\bottomrule
+\end{longtable}
+
+While any of these cooldowns is active (\code{get\_cooldown(player) > 0}),
+\textbf{all} action functions --- including \func{rotate} --- raise
+\code{GameError} without consuming the turn.
 
 \subsubsection*{Initial boxes}
 \begin{longtable}{p{4.7cm}p{2cm}p{8cm}}

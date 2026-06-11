@@ -93,6 +93,10 @@ En tant que développeur d'agent, vous allez :
         dans sa propre zone. Un robot peut tourner librement, avancer/reculer,
         ramasser une caisse proche, changer la couleur d'une caisse proche, ou
         poser une caisse qu'il transporte.
+        Avancer, ramasser, recolorer et poser prennent du temps réel : ces
+        actions placent le robot en période de \emph{cooldown}
+        pendant laquelle il ne peut plus agir du tout (voir la
+        Section~\ref{sec:one-action}).
     \item[Tours] Le temps est discrétisé en \emph{ticks}. À chaque tick, le
         joueur 0 puis le joueur 1 appelle \func{make\_decision()} une fois.
         \textbf{Exactement une action} peut être effectuée par tour.
@@ -117,7 +121,8 @@ En tant que développeur d'agent, vous allez :
     \item \textbf{Une action par tour} : \func{make\_decision()} peut
           appeler exactement une fonction d'action. \func{rotate} ne compte
           pas comme une action et peut être appelée un nombre arbitraire de
-          fois à chaque tour.
+          fois à chaque tour (sous réserve de la règle de coût temporel
+          ci-dessous).
     \item \textbf{Emplacement de pose} : à une distance fixe
           (\code{config.LAY\_DOWN\_DISTANCE}) directement devant le robot,
           orientée selon la direction actuelle du robot. Échoue si
@@ -130,6 +135,19 @@ En tant que développeur d'agent, vous allez :
           action lève \code{GameError} (par ex.\ \func{lay\_down} bloqué,
           \func{pickup} hors de portée), votre tour n'est \emph{pas}
           consommé, vous pouvez donc essayer autre chose.
+    \item \textbf{Coût temporel} : \func{move},
+          \func{pickup}, \func{set\_color} et \func{lay\_down} occupent
+          chacune le robot pendant un nombre de ticks donné par leur propre
+          constante --- \code{config.MOVE\_COOLDOWN},
+          \code{config.PICKUP\_COOLDOWN}, \code{config.SET\_COLOR\_COOLDOWN}
+          et \code{config.LAY\_DOWN\_COOLDOWN} respectivement. Une valeur $N$
+          signifie que le robot est occupé pendant $N$ ticks \emph{au total},
+          y compris le tick où l'action réussit (donc $N=1$ ne donne aucun
+          délai supplémentaire, et $N>1$ donne $N-1$ ticks supplémentaires de
+          gel). Tant que le robot est occupé, \textbf{toute} fonction
+          d'action --- y compris \func{rotate} --- lève \code{GameError} sans
+          consommer le tour. Appelez \func{get\_cooldown(player)} pour connaître
+          le nombre de ticks restants (0 = libre).
     \item \textbf{Collision lors du déplacement} : le robot s'arrête juste
           avant de heurter le bord de la carte, l'autre robot, ou une caisse
           posée.
@@ -242,23 +260,25 @@ class Agent:
 \func{get\_area\_distance(player, area\_id)} & Distance du centre du robot au rectangle de la zone (0 si à l'intérieur) \\
 \func{get\_area\_direction(player, area\_id)} & Vecteur unitaire du centre du robot vers le centre de la zone \\
 \func{get\_score(player)} & Score que \code{player} obtiendrait si la partie se terminait maintenant \\
+\func{get\_cooldown(player)} & Nombre de ticks restants avant que le robot de \code{player} puisse agir à nouveau (0 = libre maintenant) \\
 \bottomrule
 \end{longtable}
 
 \subsection{Fonctions d'action}
 \emph{Exactement une par appel à \func{make\_decision()} (sauf
-\func{rotate}, qui est gratuite).}
+\func{rotate}, qui ne compte pas comme une action). Les cinq, y compris
+\func{rotate}, sont bloquées tant que le robot est en cooldown}
 
 \begin{longtable}{p{6.7cm}p{8.3cm}}
 \toprule
 \textbf{Fonction} & \textbf{Effet} \\
 \midrule
 \endhead
-\func{move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision \\
-\func{rotate(new\_direction)} & Oriente le robot vers \code{new\_direction} \\
-\func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines) \\
-\func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1 \\
-\func{lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites) \\
+\func{move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision. Déclenche un cooldown de \code{config.MOVE\_COOLDOWN} ticks \\
+\func{rotate(new\_direction)} & Oriente le robot vers \code{new\_direction}. Ne déclenche elle-même aucun cooldown \\
+\func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines). Déclenche un cooldown de \code{config.PICKUP\_COOLDOWN} ticks \\
+\func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1. Déclenche un cooldown de \code{config.SET\_COLOR\_COOLDOWN} ticks \\
+\func{lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites). Déclenche un cooldown de \code{config.LAY\_DOWN\_COOLDOWN} ticks \\
 \bottomrule
 \end{longtable}
 
@@ -267,8 +287,10 @@ Toutes les fonctions d'action peuvent lever :
     \item \code{interface.ActionError} si une seconde action est tentée
           durant le même tour.
     \item \code{game.GameError} si l'action elle-même est invalide (hors de
-          portée, bloquée, etc.). Cela ne consomme \textbf{pas} le tour,
-          vous pouvez donc vous rattraper et essayer autre chose.
+          portée, bloquée, etc.) \textbf{ou si le robot est encore en
+          cooldown suite à une action précédente} (cela s'applique aussi
+          à \func{rotate}). Cela ne consomme \textbf{pas} le tour, vous pouvez
+          donc vous rattraper et essayer autre chose.
 \end{itemize}
 
 % ============================================================================
@@ -399,7 +421,7 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \bottomrule
 \end{longtable}
 
-\subsubsection*{Temporisation}
+\subsubsection*{Timing}
 \begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
 \toprule
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
@@ -411,6 +433,29 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \code{config.TOTAL\_TICKS} & 1200 & Nombre de ticks dans une partie. \\
 \bottomrule
 \end{longtable}
+
+\subsubsection*{Coûts d'action (temporels)}
+\begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
+\toprule
+\textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
+\midrule
+\endhead
+\code{config.MOVE\_COOLDOWN} & 2 & Nombre total de ticks pendant lesquels
+    \func{move} occupe le robot, y compris le tick où elle réussit. \\
+\code{config.PICKUP\_COOLDOWN} & 5 & Nombre total de ticks pendant lesquels
+    \func{pickup} occupe le robot, y compris le tick où elle réussit. \\
+\code{config.SET\_COLOR\_COOLDOWN} & 5 & Nombre total de ticks pendant
+    lesquels \func{set\_color} occupe le robot, y compris le tick où elle
+    réussit. \\
+\code{config.LAY\_DOWN\_COOLDOWN} & 5 & Nombre total de ticks pendant
+    lesquels \func{lay\_down} occupe le robot, y compris le tick où elle
+    réussit. \\
+\bottomrule
+\end{longtable}
+
+Tant que l'une de ces temporisations est active
+(\code{get\_cooldown(player) > 0}), \textbf{toutes} les fonctions d'action ---
+y compris \func{rotate} --- lèvent \code{GameError} sans consommer le tour.
 
 \subsubsection*{Caisses initiales}
 \begin{longtable}{p{4.7cm}p{2cm}p{8cm}}
