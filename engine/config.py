@@ -1,14 +1,24 @@
-# ── Map ────────────────────────────────────────────────────────────────────────
-MAP_WIDTH  = 1000.0
-MAP_HEIGHT = 600.0
+# ── Map (size, areas, initial box layout) ───────────────────────────────────────
+# Defined in map.json, loaded here and exposed under the names used throughout
+# the engine.
+import json as _json
+import os as _os
 
-# ── Areas: (x, y, width, height) ───────────────────────────────────────────────
-PLAYER0_AREA = (0.0, 200.0, 150.0, 200.0)
-PLAYER1_AREA = (850.0, 200.0, 150.0, 200.0)
-SCORING_AREAS = [
-    (300.0, 100.0, 100.0, 100.0),
-    (600.0, 400.0, 100.0, 100.0),
-]
+with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "map.json")) as _f:
+    _map = _json.load(_f)
+
+MAP_WIDTH  = _map["width"]
+MAP_HEIGHT = _map["height"]
+
+# Areas: (x, y, width, height)
+PLAYER0_AREA  = tuple(_map["player0_area"])
+PLAYER1_AREA  = tuple(_map["player1_area"])
+SCORING_AREAS = [tuple(a) for a in _map["scoring_areas"]]
+
+# Initial boxes: (x, y, angle_degrees, initial_color)
+# angle_degrees: angle of the box's width-axis from +x direction
+# color: 0 or 1
+INITIAL_BOXES = [tuple(b) for b in _map["initial_boxes"]]
 
 # ── Robot starting positions and orientations ───────────────────────────────────
 PLAYER0_START       = (75.0, 300.0)
@@ -53,20 +63,3 @@ MOVE_COOLDOWN      = 1
 PICKUP_COOLDOWN    = 10
 SET_COLOR_COOLDOWN = 5
 LAY_DOWN_COOLDOWN  = 10
-
-# ── Initial boxes: (x, y, angle_degrees, initial_color) ────────────────────────
-# angle_degrees: angle of the box's width-axis from +x direction
-# color: 0 or 1
-INITIAL_BOXES = [
-    (200.0, 150.0,  0.0, 0),
-    (200.0, 300.0,  0.0, 0),
-    (200.0, 450.0,  0.0, 0),
-    (350.0, 200.0, 45.0, 1),
-    (350.0, 400.0, 45.0, 1),
-    (500.0, 300.0,  0.0, 0),
-    (650.0, 200.0, 45.0, 0),
-    (650.0, 400.0, 45.0, 1),
-    (800.0, 150.0,  0.0, 1),
-    (800.0, 300.0,  0.0, 1),
-    (800.0, 450.0,  0.0, 1),
-]

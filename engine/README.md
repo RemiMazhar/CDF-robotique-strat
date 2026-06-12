@@ -9,7 +9,8 @@ editing the engine itself.
 
 | Module | Responsibility |
 |---|---|
-| `config.py` | All tunable constants (map/area geometry, robot & box physics, scoring, timing, `INITIAL_BOXES`). Pure data, no logic. |
+| `config.py` | All tunable constants (robot & box physics, scoring, timing). Map geometry (size, areas, `INITIAL_BOXES`) is loaded from `map.json` and re-exported under the same names. Pure data, no logic. |
+| `map.json` | The map definition: overall size, `player0_area`/`player1_area`/`scoring_areas` rectangles, and `initial_boxes` (position, orientation, color). Loaded by `config.py` at import time. |
 | `game.py` | The actual simulation: `Area`, `Map`, `Box`, `Robot`, `GameState` dataclasses; geometry helpers (`_normalize`, `_dot`, `_box_corners`, `_circle_rect_distance`, `_circle_rect_collides`, `_obb_obb_collides`, `_circle_in_map`, `_longest_move_to_rect_outside`, `_longest_move_to_rect_inside`, `_longest_move_to_circle`, `_longest_move`); action implementations (`do_move`, `do_rotate`, `do_pickup`, `do_set_color`, `do_lay_down`), each gated by the shared `_require_not_busy` cooldown check; `is_box_accessible`, `is_move_colliding`, `compute_scores`; `GameError`. |
 | `interface.py` | The agent-facing API. Wraps `game.py` behind a `_Context`/`_ctx()` mechanism that enforces the one-action-per-turn rule and exposes only player-scoped, read-only-feeling free functions. **The only engine module agent code imports.** |
 | `display.py` | pygame rendering: `init_window`, `draw_state`, `handle_events`, `show`. Imports `game` private helpers directly (`_box_corners`, etc.) to draw oriented rectangles. |
