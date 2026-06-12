@@ -58,6 +58,7 @@ python play.py run                  # run a game, print progress + final score
 python play.py run --quiet          # suppress per-tick error logging
 python play.py run --save           # also save a timestamped game to saved_games/
 python play.py run --save --view    # run, save, then immediately replay it
+python play.py run --random-colors  # randomize each box's starting color
 python play.py view <history.json>  # replay a game from saved_games/ (or any path)
 ```
 

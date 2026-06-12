@@ -17,11 +17,15 @@ import history as _history
 import interface as _iface
 import viewer
 
-def run_game(verbose: bool = True, history_path: str | None = None) -> tuple:
+def run_game(verbose: bool = True, history_path: str | None = None,
+              randomize_colors: bool = False) -> tuple:
     """Run a full game and return (score_player0, score_player1).
 
     If history_path is given, write a JSON history file there.
     Pass history_path='' to auto-generate a timestamped filename.
+
+    If randomize_colors is True, each initial box gets a random color (0 or
+    1) instead of the color specified in map.json.
     """
     # Each player gets its own Agent instance — even when both PLAYER*_AGENT
     # paths name the same module (the cached module object would otherwise be
@@ -30,7 +34,7 @@ def run_game(verbose: bool = True, history_path: str | None = None) -> tuple:
     agent1 = importlib.import_module(agents_config.PLAYER1_AGENT).Agent()
     agents = [agent0, agent1]
 
-    state  = _game.GameState()
+    state  = _game.GameState(randomize_colors=randomize_colors)
     frames = [_history.snapshot(state)]   # frame 0: initial state
 
     if verbose:
@@ -98,7 +102,8 @@ if __name__ == "__main__":
         history_path = os.path.join(SAVED_GAMES_DIR, f"history_{stamp}.json")
     else:
         history_path = None
-    run_game(verbose=verbose, history_path=history_path)
+    randomize_colors = "--random-colors" in sys.argv
+    run_game(verbose=verbose, history_path=history_path, randomize_colors=randomize_colors)
     if "--view" in sys.argv:
         viewer.view_past_game(history_path)
     

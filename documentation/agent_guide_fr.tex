@@ -129,8 +129,12 @@ En tant que développeur d'agent, vous allez :
           l'emplacement est hors de la carte ou chevauche une autre caisse.
     \item \textbf{Rotation des caisses} : les caisses prennent l'orientation
           du robot lorsqu'elles sont posées.
-    \item \textbf{Disposition initiale} : fixe et entièrement définie dans le
-          fichier de configuration.
+    \item \textbf{Disposition initiale} : les positions, orientations et
+          zones sont fixes et entièrement définies dans le fichier de
+          configuration. Les couleurs des caisses sont également définies
+          dans la configuration par défaut, sauf si la partie est lancée
+          avec \code{python play.py run --random-colors}, qui attribue alors
+          une couleur aléatoire (0 ou 1) à chaque caisse.
     \item \textbf{Les actions échouées ne consomment pas le tour} : si une
           action lève \code{GameError} (par ex.\ \func{lay\_down} bloqué,
           \func{pickup} hors de portée), votre tour n'est \emph{pas}
@@ -168,6 +172,7 @@ python play.py run                  # lance une partie, affiche la progression e
 python play.py run --quiet          # supprime les messages d'erreur a chaque tick
 python play.py run --save           # sauvegarde aussi la partie dans saved_games/
 python play.py run --save --view    # lance, sauvegarde, puis rejoue immediatement la partie
+python play.py run --random-colors  # tire au hasard la couleur initiale de chaque caisse
 python play.py view <history.json>  # rejoue une partie depuis saved_games/ (ou un chemin quelconque)
 \end{lstlisting}
 

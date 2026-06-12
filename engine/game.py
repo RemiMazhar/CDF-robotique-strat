@@ -1,6 +1,7 @@
 """Core game engine. Agents should not import this directly; use interface.py."""
 
 import math
+import random
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
@@ -331,22 +332,26 @@ def _build_map() -> Map:
     return Map(width=config.MAP_WIDTH, height=config.MAP_HEIGHT, areas=areas)
 
 
-def _build_boxes() -> List[Box]:
+def _build_boxes(randomize_colors: bool = False) -> List[Box]:
     boxes = []
+    colors = [color for (x, y, angle, color) in config.INITIAL_BOXES]
+    if randomize_colors:
+        random.shuffle(colors)
     for i, (x, y, angle, color) in enumerate(config.INITIAL_BOXES):
+        color = colors[i]
         orient = _angle_to_vec(angle)
         boxes.append(Box(id=i, position=(x, y), orientation=orient, color=color, owner=-1))
     return boxes
 
 
 class GameState:
-    def __init__(self) -> None:
+    def __init__(self, randomize_colors: bool = False) -> None:
         self.map    = _build_map()
         self.robots = [
             Robot(0, config.PLAYER0_START, _angle_to_vec(config.PLAYER0_START_ANGLE)),
             Robot(1, config.PLAYER1_START, _angle_to_vec(config.PLAYER1_START_ANGLE)),
         ]
-        self.boxes = _build_boxes()
+        self.boxes = _build_boxes(randomize_colors)
         self.tick   = 0
 
     def get_box(self, box_id: int) -> Optional[Box]:

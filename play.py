@@ -12,6 +12,7 @@ Usage (run with your system's `python` / `python3` / `py`, no venv needed):
     python play.py run --quiet          # suppress per-tick error logging
     python play.py run --save           # also write a timestamped history_*.json
     python play.py run --save --view    # play, save, then immediately replay it
+    python play.py run --random-colors  # randomize each box's starting color
 
     python play.py view <history.json>  # replay a game saved in saved_games/
                                          # (bare filenames are looked up there)

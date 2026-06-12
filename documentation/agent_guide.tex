@@ -121,7 +121,11 @@ As an agent author, you will:
           of map bounds or overlaps another box.
     \item \textbf{Box rotation}: boxes take the
           robot's orientation when laid down.
-    \item \textbf{Initial layout}: fully config-defined and fixed.
+    \item \textbf{Initial layout}: positions, orientations and areas are
+          fully config-defined and fixed. Box colors are also config-defined
+          by default, unless the game is started with
+          \code{python play.py run --random-colors}, which assigns each box
+          a random color (0 or 1) instead.
     \item \textbf{Failed actions don't consume the turn}: if an action
           raises \code{GameError} (e.g.\ \func{lay\_down} blocked,
           \func{pickup} out of reach), your turn is \emph{not} used up, so
@@ -158,6 +162,7 @@ python play.py run                  # run a game, print progress + final score
 python play.py run --quiet          # suppress per-tick error logging
 python play.py run --save           # also save a timestamped game to saved_games/
 python play.py run --save --view    # run, save, then immediately replay it
+python play.py run --random-colors  # randomize each box's starting color
 python play.py view <history.json>  # replay a game from saved_games/ (or any path)
 \end{lstlisting}
 
