@@ -98,12 +98,10 @@ As an agent author, you will:
         \textbf{Exactly one action} may be taken per turn.
     \item[Scoring] Computed at game end:
         \begin{itemize}[nosep]
-            \item every box sitting in player $X$'s own area $\rightarrow$
-                  \textbf{+\code{config.POINTS\_OWN\_AREA}} for $X$ (regardless of
-                  the box's color);
-            \item every box sitting in a scoring area whose color is $X$
-                  $\rightarrow$ \textbf{+\code{config.POINTS\_SCORING\_AREA}} for
-                  $X$;
+            \item player $X$ wins \textbf{+\code{POINTS\_OWN\_AREA}} points for every 
+                  box sitting in $X$'s own area (regardless of the box's color);
+            \item player $X$ wins \textbf{+\code{POINTS\_OWN\_AREA}} points for every 
+                  box sitting in a scoring area whose color is $X$;
             \item boxes currently held by a robot score nothing.
         \end{itemize}
 \end{description}
@@ -118,7 +116,7 @@ As an agent author, you will:
           and can be called an arbitrary number of times every turn (subject
           to the cooldown rule below).
     \item \textbf{Lay-down placement}: fixed distance
-          (\code{config.LAY\_DOWN\_DISTANCE}) directly in front of the robot,
+          (\code{LAY\_DOWN\_DISTANCE}) directly in front of the robot,
           oriented along the robot's current facing direction. Fails if the spot is out
           of map bounds or overlaps another box.
     \item \textbf{Box rotation}: boxes take the
@@ -131,9 +129,9 @@ As an agent author, you will:
     \item \textbf{Cooldown / temporal cost}: \func{move}, \func{pickup},
           \func{set\_color} and \func{lay\_down} each occupy the robot for a
           number of ticks given by their own constant ---
-          \code{config.MOVE\_COOLDOWN}, \code{config.PICKUP\_COOLDOWN},
-          \code{config.SET\_COLOR\_COOLDOWN} and
-          \code{config.LAY\_DOWN\_COOLDOWN} respectively. A value of $N$ means
+          \code{MOVE\_COOLDOWN}, \code{PICKUP\_COOLDOWN},
+          \code{SET\_COLOR\_COOLDOWN} and
+          \code{LAY\_DOWN\_COOLDOWN} respectively. A value of $N$ means
           the robot is occupied for $N$ \emph{total} ticks, including the
           tick the action succeeds on (so $N=1$ means no extra delay, and
           $N>1$ means $N-1$ additional frozen ticks). While occupied,
@@ -245,7 +243,7 @@ class Agent:
 \func{get\_boxes\_held(player)} & Boxes currently held by \code{player} \\
 \func{is\_accessible(player, box\_id)} & Is the box on the ground and within reach? \\
 \func{is\_colliding(player, amount)} & Would moving forward by \code{amount} collide (edge/robot/box)? \\
-\func{get\_obstacle\_distance(player)} & Distance from \code{player}'s robot to the nearest obstacle (map edge, other robot, or laid-down box) along its current orientation; \textbf{not} capped at \code{config.MAX\_MOVE\_SPEED}, may be \code{inf} \\
+\func{get\_obstacle\_distance(player)} & Distance from \code{player}'s robot to the nearest obstacle (map edge, other robot, or laid-down box) along its current orientation; \textbf{not} capped at \code{MAX\_MOVE\_SPEED}, may be \code{inf} \\
 \func{get\_box\_distance(player, box\_id)} & Circle-to-rectangle distance, robot $\to$ box \\
 \func{get\_box\_direction(player, box\_id)} & Unit vector from robot center toward box center \\
 \func{get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
@@ -265,11 +263,11 @@ while the robot is on cooldown --- see Section~\ref{sec:one-action}.}
 \textbf{Function} & \textbf{Effect} \\
 \midrule
 \endhead
-\func{move(amount)} & Move forward by \code{amount} ($\geq 0$; capped at \code{config.MAX\_MOVE\_SPEED}); stops just before any collision. Starts a cooldown of \code{config.MOVE\_COOLDOWN} ticks \\
+\func{move(amount)} & Move forward by \code{amount} ($\geq 0$; capped at \code{MAX\_MOVE\_SPEED}); stops just before any collision. Starts a cooldown of \code{MOVE\_COOLDOWN} ticks \\
 \func{rotate(new\_direction)} & Face \code{new\_direction}. Does not itself start a cooldown\\
-\func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full). Starts a cooldown of \code{config.PICKUP\_COOLDOWN} ticks \\
-\func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1. Starts a cooldown of \code{config.SET\_COLOR\_COOLDOWN} ticks \\
-\func{lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds). Starts a cooldown of \code{config.LAY\_DOWN\_COOLDOWN} ticks \\
+\func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full). Starts a cooldown of \code{PICKUP\_COOLDOWN} ticks \\
+\func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1. Starts a cooldown of \code{SET\_COLOR\_COOLDOWN} ticks \\
+\func{lay\_down(box\_id)} & Place a held box in front of the robot (fails if blocked / out of bounds). Starts a cooldown of \code{LAY\_DOWN\_COOLDOWN} ticks \\
 \bottomrule
 \end{longtable}
 
@@ -314,9 +312,9 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.MAP\_WIDTH} & 1000.0 & Width of the playing field, in game units (the
+\code{MAP\_WIDTH} & 1000.0 & Width of the playing field, in game units (the
     \code{x} extent; recall \code{(0, 0)} is the top-left corner). \\
-\code{config.MAP\_HEIGHT} & 600.0 & Height of the playing field (the \code{y}
+\code{MAP\_HEIGHT} & 600.0 & Height of the playing field (the \code{y}
     extent). \\
 \bottomrule
 \end{longtable}
@@ -327,11 +325,11 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & \code{(x, y, width,
+\code{PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & \code{(x, y, width,
     height)} rectangle defining player 0's home area. \\
-\code{config.PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Same, for player 1
+\code{PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Same, for player 1
     (\code{Area.type == 1}). \\
-\code{config.SCORING\_AREAS} & \scriptsize list of 2 rects & List of \code{(x, y,
+\code{SCORING\_AREAS} & \scriptsize list of 2 rects & List of \code{(x, y,
     width, height)} rectangles, each becoming an \code{Area} with
     \code{type == 2}. \\
 \bottomrule
@@ -343,13 +341,13 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.PLAYER0\_START} & (75, 300) & \code{(x, y)} spawn position of player
+\code{PLAYER0\_START} & (75, 300) & \code{(x, y)} spawn position of player
     0's robot --- inside \code{PLAYER0\_AREA}. \\
-\code{config.PLAYER0\_START\_ANGLE} & 0.0 & Initial facing angle of player 0's
+\code{PLAYER0\_START\_ANGLE} & 0.0 & Initial facing angle of player 0's
     robot, in \textbf{degrees} measured from the $+x$ axis ($0^\circ$ = facing
     right, toward the center of the map). \\
-\code{config.PLAYER1\_START} & (925, 300) & Spawn position of player 1's robot. \\
-\code{config.PLAYER1\_START\_ANGLE} & 180.0 & Initial facing angle of player 1's \\
+\code{PLAYER1\_START} & (925, 300) & Spawn position of player 1's robot. \\
+\code{PLAYER1\_START\_ANGLE} & 180.0 & Initial facing angle of player 1's \\
 \bottomrule
 \end{longtable}
 
@@ -359,10 +357,10 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.ROBOT\_RADIUS} & 20.0 & Radius of the circular robot body. \\
-\code{config.MAX\_MOVE\_SPEED} & 10.0 & The largest \code{|amount|} a single
+\code{ROBOT\_RADIUS} & 20.0 & Radius of the circular robot body. \\
+\code{MAX\_MOVE\_SPEED} & 10.0 & The largest \code{|amount|} a single
     \func{move} call will actually apply, per tick. \\
-\code{config.MAX\_BOXES\_HELD} & 3 & Maximum number of boxes a robot can carry at
+\code{MAX\_BOXES\_HELD} & 3 & Maximum number of boxes a robot can carry at
     once. \\
 \bottomrule
 \end{longtable}
@@ -373,8 +371,8 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.BOX\_WIDTH} & 40.0 & Width of a box. \\
-\code{config.BOX\_HEIGHT} & 25.0 & Height of a box. \\
+\code{BOX\_WIDTH} & 40.0 & Width of a box. \\
+\code{BOX\_HEIGHT} & 25.0 & Height of a box. \\
 \bottomrule
 \end{longtable}
 
@@ -384,11 +382,11 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.ACCESSIBILITY\_RADIUS} & 25.0 & Maximum circle-to-rectangle distance
+\code{ACCESSIBILITY\_RADIUS} & 25.0 & Maximum circle-to-rectangle distance
     (robot center $\to$ nearest point on the box) at which a box counts as
     ``accessible'' (i.e.\ within reach for \func{pickup} and
     \func{set\_color}). \\
-\code{config.LAY\_DOWN\_DISTANCE} & 45.0 & Fixed distance from the robot's center
+\code{LAY\_DOWN\_DISTANCE} & 45.0 & Fixed distance from the robot's center
     to the \emph{center} of a box placed via \func{lay\_down}. \\
 \bottomrule
 \end{longtable}
@@ -399,9 +397,9 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.POINTS\_OWN\_AREA} & 3 & Points awarded to player $X$ for each box
+\code{POINTS\_OWN\_AREA} & 3 & Points awarded to player $X$ for each box
     sitting in $X$'s own area. \\
-\code{config.POINTS\_SCORING\_AREA} & 5 & Points awarded to player $X$ for each
+\code{POINTS\_SCORING\_AREA} & 5 & Points awarded to player $X$ for each
     box sitting in a scoring area \textbf{whose color matches $X$}. \\
 \bottomrule
 \end{longtable}
@@ -412,10 +410,10 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.DT} & 0.1 & Seconds represented by one tick. \\
-\code{config.GAME\_DURATION} & 120.0 & Total game length, in seconds
+\code{DT} & 0.1 & Seconds represented by one tick. \\
+\code{GAME\_DURATION} & 120.0 & Total game length, in seconds
     ($= $ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
-\code{config.TOTAL\_TICKS} & 1200 & Number of ticks in a game. \\
+\code{TOTAL\_TICKS} & 1200 & Number of ticks in a game. \\
 \bottomrule
 \end{longtable}
 
@@ -425,13 +423,13 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.MOVE\_COOLDOWN} & 2 & Total ticks \func{move} occupies the robot
+\code{MOVE\_COOLDOWN} & 2 & Total ticks \func{move} occupies the robot
     for, including the tick it succeeds on. \\
-\code{config.PICKUP\_COOLDOWN} & 5 & Total ticks \func{pickup} occupies the
+\code{PICKUP\_COOLDOWN} & 5 & Total ticks \func{pickup} occupies the
     robot for, including the tick it succeeds on. \\
-\code{config.SET\_COLOR\_COOLDOWN} & 5 & Total ticks \func{set\_color}
+\code{SET\_COLOR\_COOLDOWN} & 5 & Total ticks \func{set\_color}
     occupies the robot for, including the tick it succeeds on. \\
-\code{config.LAY\_DOWN\_COOLDOWN} & 5 & Total ticks \func{lay\_down} occupies
+\code{LAY\_DOWN\_COOLDOWN} & 5 & Total ticks \func{lay\_down} occupies
     the robot for, including the tick it succeeds on. \\
 \bottomrule
 \end{longtable}
@@ -446,7 +444,7 @@ While any of these cooldowns is active (\code{get\_cooldown(player) > 0}),
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{config.INITIAL\_BOXES} & list of 11 tuples & The fixed starting layout: each
+\code{INITIAL\_BOXES} & list of 11 tuples & The fixed starting layout: each
     entry is \code{(x, y, angle\_degrees, color)} --- the box's initial
     center position, its orientation expressed as an angle in degrees from
     the $+x$ axis,

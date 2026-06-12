@@ -103,11 +103,11 @@ En tant que développeur d'agent, vous allez :
     \item[Score] Calculé à la fin de la partie :
         \begin{itemize}[nosep]
             \item chaque caisse posée dans la zone du joueur $X$
-                  $\rightarrow$ \textbf{+\code{config.POINTS\_OWN\_AREA}} pour
+                  fait gagner \textbf{+\code{POINTS\_OWN\_AREA}} points à
                   $X$ (quelle que soit la couleur de la caisse) ;
             \item chaque caisse posée dans une zone de score et dont la
-                  couleur est $X$ $\rightarrow$
-                  \textbf{+\code{config.POINTS\_SCORING\_AREA}} pour $X$ ;
+                  couleur est $X$ fait gagner
+                  \textbf{+\code{POINTS\_SCORING\_AREA}} points à $X$ ;
             \item les caisses actuellement transportées par un robot ne
                   rapportent aucun point.
         \end{itemize}
@@ -124,7 +124,7 @@ En tant que développeur d'agent, vous allez :
           fois à chaque tour (sous réserve de la règle de coût temporel
           ci-dessous).
     \item \textbf{Emplacement de pose} : à une distance fixe
-          (\code{config.LAY\_DOWN\_DISTANCE}) directement devant le robot,
+          (\code{LAY\_DOWN\_DISTANCE}) directement devant le robot,
           orientée selon la direction actuelle du robot. Échoue si
           l'emplacement est hors de la carte ou chevauche une autre caisse.
     \item \textbf{Rotation des caisses} : les caisses prennent l'orientation
@@ -138,9 +138,9 @@ En tant que développeur d'agent, vous allez :
     \item \textbf{Coût temporel} : \func{move},
           \func{pickup}, \func{set\_color} et \func{lay\_down} occupent
           chacune le robot pendant un nombre de ticks donné par leur propre
-          constante --- \code{config.MOVE\_COOLDOWN},
-          \code{config.PICKUP\_COOLDOWN}, \code{config.SET\_COLOR\_COOLDOWN}
-          et \code{config.LAY\_DOWN\_COOLDOWN} respectivement. Une valeur $N$
+          constante --- \code{MOVE\_COOLDOWN},
+          \code{PICKUP\_COOLDOWN}, \code{SET\_COLOR\_COOLDOWN}
+          et \code{LAY\_DOWN\_COOLDOWN} respectivement. Une valeur $N$
           signifie que le robot est occupé pendant $N$ ticks \emph{au total},
           y compris le tick où l'action réussit (donc $N=1$ ne donne aucun
           délai supplémentaire, et $N>1$ donne $N-1$ ticks supplémentaires de
@@ -255,7 +255,7 @@ class Agent:
 \func{get\_boxes\_held(player)} & Caisses actuellement transportées par \code{player} \\
 \func{is\_accessible(player, box\_id)} & La caisse est-elle au sol et à portée ? \\
 \func{is\_colliding(player, amount)} & Avancer de \code{amount} provoquerait-il une collision (bord/robot/caisse) ? \\
-\func{get\_obstacle\_distance(player)} & Distance entre le robot de \code{player} et l'obstacle le plus proche (bord de la carte, autre robot, ou caisse posée) dans la direction actuelle ; \textbf{non} limitée par \code{config.MAX\_MOVE\_SPEED}, peut valoir \code{inf} \\
+\func{get\_obstacle\_distance(player)} & Distance entre le robot de \code{player} et l'obstacle le plus proche (bord de la carte, autre robot, ou caisse posée) dans la direction actuelle ; \textbf{non} limitée par \code{MAX\_MOVE\_SPEED}, peut valoir \code{inf} \\
 \func{get\_box\_distance(player, box\_id)} & Distance cercle-rectangle, du robot vers la caisse \\
 \func{get\_box\_direction(player, box\_id)} & Vecteur unitaire du centre du robot vers le centre de la caisse \\
 \func{get\_area\_distance(player, area\_id)} & Distance du centre du robot au rectangle de la zone (0 si à l'intérieur) \\
@@ -275,11 +275,11 @@ class Agent:
 \textbf{Fonction} & \textbf{Effet} \\
 \midrule
 \endhead
-\func{move(amount)} & Avance de \code{amount} ($\geq 0$ ; plafonné à \code{config.MAX\_MOVE\_SPEED}) ; s'arrête juste avant toute collision. Déclenche un cooldown de \code{config.MOVE\_COOLDOWN} ticks \\
+\func{move(amount)} & Avance de \code{amount} ($\geq 0$ ; plafonné à \code{MAX\_MOVE\_SPEED}) ; s'arrête juste avant toute collision. Déclenche un cooldown de \code{MOVE\_COOLDOWN} ticks \\
 \func{rotate(new\_direction)} & Oriente le robot vers \code{new\_direction}. Ne déclenche elle-même aucun cooldown \\
-\func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines). Déclenche un cooldown de \code{config.PICKUP\_COOLDOWN} ticks \\
-\func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1. Déclenche un cooldown de \code{config.SET\_COLOR\_COOLDOWN} ticks \\
-\func{lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites). Déclenche un cooldown de \code{config.LAY\_DOWN\_COOLDOWN} ticks \\
+\func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines). Déclenche un cooldown de \code{PICKUP\_COOLDOWN} ticks \\
+\func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1. Déclenche un cooldown de \code{SET\_COLOR\_COOLDOWN} ticks \\
+\func{lay\_down(box\_id)} & Pose une caisse transportée devant le robot (échoue si bloqué / hors limites). Déclenche un cooldown de \code{LAY\_DOWN\_COOLDOWN} ticks \\
 \bottomrule
 \end{longtable}
 
@@ -325,10 +325,10 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.MAP\_WIDTH} & 1000.0 & Largeur du terrain de jeu, en unités de
+\code{MAP\_WIDTH} & 1000.0 & Largeur du terrain de jeu, en unités de
     jeu (étendue selon \code{x} ; pour rappel, \code{(0, 0)} est le coin
     supérieur gauche). \\
-\code{config.MAP\_HEIGHT} & 600.0 & Hauteur du terrain de jeu (étendue selon
+\code{MAP\_HEIGHT} & 600.0 & Hauteur du terrain de jeu (étendue selon
     \code{y}). \\
 \bottomrule
 \end{longtable}
@@ -339,11 +339,11 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & Rectangle
+\code{PLAYER0\_AREA} & \scriptsize(0, 200, 150, 200) & Rectangle
     \code{(x, y, largeur, hauteur)} définissant la zone de base du joueur 0. \\
-\code{config.PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Idem, pour le
+\code{PLAYER1\_AREA} & \scriptsize(850, 200, 150, 200) & Idem, pour le
     joueur 1 (\code{Area.type == 1}). \\
-\code{config.SCORING\_AREAS} & \scriptsize liste de 2 rectangles & Liste de
+\code{SCORING\_AREAS} & \scriptsize liste de 2 rectangles & Liste de
     rectangles \code{(x, y, largeur, hauteur)}, chacun devenant une
     \code{Area} avec \code{type == 2}. \\
 \bottomrule
@@ -355,14 +355,14 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.PLAYER0\_START} & (75, 300) & Position de départ \code{(x, y)}
+\code{PLAYER0\_START} & (75, 300) & Position de départ \code{(x, y)}
     du robot du joueur 0 --- à l'intérieur de \code{PLAYER0\_AREA}. \\
-\code{config.PLAYER0\_START\_ANGLE} & 0.0 & Angle d'orientation initial du
+\code{PLAYER0\_START\_ANGLE} & 0.0 & Angle d'orientation initial du
     robot du joueur 0, en \textbf{degrés} mesurés depuis l'axe $+x$
     ($0^\circ$ = orienté vers la droite, vers le centre de la carte). \\
-\code{config.PLAYER1\_START} & (925, 300) & Position de départ du robot du
+\code{PLAYER1\_START} & (925, 300) & Position de départ du robot du
     joueur 1. \\
-\code{config.PLAYER1\_START\_ANGLE} & 180.0 & Angle d'orientation initial du
+\code{PLAYER1\_START\_ANGLE} & 180.0 & Angle d'orientation initial du
     robot du joueur 1 ($180^\circ$ = orienté vers la gauche, vers le centre
     de la carte). \\
 \bottomrule
@@ -374,11 +374,11 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.ROBOT\_RADIUS} & 20.0 & Rayon du corps circulaire du robot. \\
-\code{config.MAX\_MOVE\_SPEED} & 10.0 & La plus grande valeur de
+\code{ROBOT\_RADIUS} & 20.0 & Rayon du corps circulaire du robot. \\
+\code{MAX\_MOVE\_SPEED} & 10.0 & La plus grande valeur de
     \code{|amount|} qu'un appel à \func{move} appliquera réellement, par
     tick. \\
-\code{config.MAX\_BOXES\_HELD} & 3 & Nombre maximal de caisses qu'un robot
+\code{MAX\_BOXES\_HELD} & 3 & Nombre maximal de caisses qu'un robot
     peut transporter à la fois. \\
 \bottomrule
 \end{longtable}
@@ -389,8 +389,8 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.BOX\_WIDTH} & 40.0 & Largeur d'une caisse. \\
-\code{config.BOX\_HEIGHT} & 25.0 & Hauteur d'une caisse. \\
+\code{BOX\_WIDTH} & 40.0 & Largeur d'une caisse. \\
+\code{BOX\_HEIGHT} & 25.0 & Hauteur d'une caisse. \\
 \bottomrule
 \end{longtable}
 
@@ -400,11 +400,11 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.ACCESSIBILITY\_RADIUS} & 25.0 & Distance cercle-rectangle
+\code{ACCESSIBILITY\_RADIUS} & 25.0 & Distance cercle-rectangle
     maximale (du centre du robot au point le plus proche de la caisse) en
     deçà de laquelle une caisse est considérée comme « accessible »
     (c.-à-d.\ à portée pour \func{pickup} et \func{set\_color}). \\
-\code{config.LAY\_DOWN\_DISTANCE} & 45.0 & Distance fixe entre le centre du
+\code{LAY\_DOWN\_DISTANCE} & 45.0 & Distance fixe entre le centre du
     robot et le \emph{centre} d'une caisse posée via \func{lay\_down}. \\
 \bottomrule
 \end{longtable}
@@ -415,9 +415,9 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.POINTS\_OWN\_AREA} & 3 & Points attribués au joueur $X$ pour
+\code{POINTS\_OWN\_AREA} & 3 & Points attribués au joueur $X$ pour
     chaque caisse posée dans la zone de $X$. \\
-\code{config.POINTS\_SCORING\_AREA} & 5 & Points attribués au joueur $X$
+\code{POINTS\_SCORING\_AREA} & 5 & Points attribués au joueur $X$
     pour chaque caisse posée dans une zone de score \textbf{dont la couleur
     correspond à $X$}. \\
 \bottomrule
@@ -429,10 +429,10 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.DT} & 0.1 & Nombre de secondes représentées par un tick. \\
-\code{config.GAME\_DURATION} & 120.0 & Durée totale de la partie, en
+\code{DT} & 0.1 & Nombre de secondes représentées par un tick. \\
+\code{GAME\_DURATION} & 120.0 & Durée totale de la partie, en
     secondes ($=$ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
-\code{config.TOTAL\_TICKS} & 1200 & Nombre de ticks dans une partie. \\
+\code{TOTAL\_TICKS} & 1200 & Nombre de ticks dans une partie. \\
 \bottomrule
 \end{longtable}
 
@@ -442,14 +442,14 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.MOVE\_COOLDOWN} & 2 & Nombre total de ticks pendant lesquels
+\code{MOVE\_COOLDOWN} & 2 & Nombre total de ticks pendant lesquels
     \func{move} occupe le robot, y compris le tick où elle réussit. \\
-\code{config.PICKUP\_COOLDOWN} & 5 & Nombre total de ticks pendant lesquels
+\code{PICKUP\_COOLDOWN} & 5 & Nombre total de ticks pendant lesquels
     \func{pickup} occupe le robot, y compris le tick où elle réussit. \\
-\code{config.SET\_COLOR\_COOLDOWN} & 5 & Nombre total de ticks pendant
+\code{SET\_COLOR\_COOLDOWN} & 5 & Nombre total de ticks pendant
     lesquels \func{set\_color} occupe le robot, y compris le tick où elle
     réussit. \\
-\code{config.LAY\_DOWN\_COOLDOWN} & 5 & Nombre total de ticks pendant
+\code{LAY\_DOWN\_COOLDOWN} & 5 & Nombre total de ticks pendant
     lesquels \func{lay\_down} occupe le robot, y compris le tick où elle
     réussit. \\
 \bottomrule
@@ -465,7 +465,7 @@ y compris \func{rotate} --- lèvent \code{GameError} sans consommer le tour.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{config.INITIAL\_BOXES} & liste de 11 tuples & La disposition de départ
+\code{INITIAL\_BOXES} & liste de 11 tuples & La disposition de départ
     fixe : chaque entrée est \code{(x, y, angle\_degrees, color)} --- la
     position initiale du centre de la caisse, son orientation exprimée comme
     un angle en degrés depuis l'axe $+x$, et sa couleur de départ
