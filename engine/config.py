@@ -70,6 +70,3 @@ INITIAL_BOXES = [
     (800.0, 300.0,  0.0, 1),
     (800.0, 450.0,  0.0, 1),
 ]
-
-# ── Collision precision ─────────────────────────────────────────────────────────
-COLLISION_STEPS = 16   # binary-search iterations for movement collision

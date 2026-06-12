@@ -99,6 +99,188 @@ def _circle_rect_distance(circle: Tuple[float, float],
     return math.hypot(local_x - nx, local_y - ny)
 
 
+def _longest_move_to_rect_outside(start : Tuple[float, float],
+                            direction : Tuple[float, float],
+                            radius: float,
+                            rect_center: Tuple[float, float],
+                            rect_orient: Tuple[float, float],
+                            half_w: float,
+                            half_h: float) -> float:
+    """Longest move that can be done by a circle without intersecting an oriented rectangle"""
+    dx = start[0] - rect_center[0]
+    dy = start[1] - rect_center[1]
+    cos_a, sin_a = rect_orient
+    # Transform to rectangle-local space (rect_orient = local x-axis)
+    local_x =  dx * cos_a + dy * sin_a
+    local_y = -dx * sin_a + dy * cos_a
+    local_dirx =  direction[0] * cos_a + direction[1] * sin_a
+    local_diry = -direction[0] * sin_a + direction[1] * cos_a
+
+    if -half_h <= local_y <= half_h and -half_w <= local_x <= half_w:
+        return 0
+
+    # At or inside the rectangle inflated by `radius` (touching or overlapping):
+    # moving further toward the rectangle (or tangent to it) is blocked, but
+    # moving away is unconstrained -- by convexity a straight move away from a
+    # point on/inside the shape can't re-enter it. This also covers the case
+    # where a previous move stopped exactly at the boundary and floating-point
+    # rounding left a tiny penetration: such a penetration is resolved by the
+    # "moving away" branch instead of permanently blocking all movement.
+    nearest_x = max(-half_w, min(half_w, local_x))
+    nearest_y = max(-half_h, min(half_h, local_y))
+    overlap_x = local_x - nearest_x
+    overlap_y = local_y - nearest_y
+    overlap_dist = math.hypot(overlap_x, overlap_y)
+    if overlap_dist <= radius:
+        if overlap_dist == 0 or overlap_x * local_dirx + overlap_y * local_diry <= 0:
+            return 0
+        return float("Inf")
+
+    dir_len = math.hypot(local_dirx, local_diry)
+    if dir_len == 0:
+        return float("Inf")
+
+    dist = float("Inf")
+
+    # The four straight edges of the rectangle, each offset outward by `radius`.
+    if local_dirx != 0:
+        for edge_x in (-half_w - radius, half_w + radius):
+            t = (edge_x - local_x) / local_dirx
+            if t > 0:
+                y_intersect = local_y + t * local_diry
+                if -half_h <= y_intersect <= half_h:
+                    dist = min(dist, t * dir_len)
+
+    if local_diry != 0:
+        for edge_y in (-half_h - radius, half_h + radius):
+            t = (edge_y - local_y) / local_diry
+            if t > 0:
+                x_intersect = local_x + t * local_dirx
+                if -half_w <= x_intersect <= half_w:
+                    dist = min(dist, t * dir_len)
+
+    # The four rounded corners: quarter-circles of radius `radius` centered on
+    # each corner of the rectangle, covering the diagonal regions between edges.
+    for corner_x, corner_y in ((-half_w, -half_h), (half_w, -half_h),
+                                (-half_w, half_h), (half_w, half_h)):
+        ox = local_x - corner_x
+        oy = local_y - corner_y
+        a = dir_len * dir_len
+        b = 2 * (ox * local_dirx + oy * local_diry)
+        c = ox * ox + oy * oy - radius * radius
+        disc = b * b - 4 * a * c
+        if disc < 0:
+            continue
+        sqrt_disc = math.sqrt(disc)
+        for t in ((-b - sqrt_disc) / (2 * a), (-b + sqrt_disc) / (2 * a)):
+            if t <= 0:
+                continue
+            px = local_x + t * local_dirx
+            py = local_y + t * local_diry
+            # Only the outward-facing quarter of the circle is part of the boundary.
+            if (px - corner_x) * corner_x >= 0 and (py - corner_y) * corner_y >= 0:
+                dist = min(dist, t * dir_len)
+
+    return dist
+
+
+def _longest_move_to_circle(start: Tuple[float, float],
+                             direction: Tuple[float, float],
+                             radius: float,
+                             obstacle_center: Tuple[float, float],
+                             obstacle_radius: float) -> float:
+    """Longest move that can be done by a circle without intersecting another circle"""
+    dx = start[0] - obstacle_center[0]
+    dy = start[1] - obstacle_center[1]
+    combined_radius = radius + obstacle_radius
+
+    # At or inside the combined radius (touching or overlapping): moving
+    # further toward the obstacle's center (or tangent to it) is blocked, but
+    # moving away is unconstrained -- by convexity a straight move away from a
+    # point on/inside the obstacle can't re-enter it. This also covers the
+    # case where a previous move stopped exactly at the boundary and
+    # floating-point rounding left a tiny penetration: such a penetration is
+    # resolved by the "moving away" branch instead of permanently blocking all
+    # movement.
+    dist_to_center = math.hypot(dx, dy)
+    if dist_to_center <= combined_radius:
+        if dist_to_center == 0 or dx * direction[0] + dy * direction[1] <= 0:
+            return 0
+        return float("Inf")
+
+    dir_len = math.hypot(direction[0], direction[1])
+    if dir_len == 0:
+        return float("Inf")
+
+    a = dir_len * dir_len
+    b = 2 * (dx * direction[0] + dy * direction[1])
+    c = dx * dx + dy * dy - combined_radius * combined_radius
+    disc = b * b - 4 * a * c
+    if disc < 0:
+        return float("Inf")
+
+    t = (-b - math.sqrt(disc)) / (2 * a)
+    if t <= 0:
+        return float("Inf")
+    return t * dir_len
+
+
+def _longest_move_to_rect_inside(start: Tuple[float, float],
+                                  direction: Tuple[float, float],
+                                  radius: float,
+                                  rect_x: float,
+                                  rect_y: float,
+                                  rect_width: float,
+                                  rect_height: float) -> float:
+    """Longest move that can be done by a circle without exiting an axis-aligned rectangle"""
+    min_x = rect_x + radius
+    max_x = rect_x + rect_width - radius
+    min_y = rect_y + radius
+    max_y = rect_y + rect_height - radius
+
+    dir_len = math.hypot(direction[0], direction[1])
+    if dir_len == 0:
+        return float("Inf")
+
+    # For each axis, a nonzero direction is always heading toward one specific
+    # edge (max_x if positive, min_x if negative, etc.): if the start is
+    # already at/past *that* edge, moving further that way (or staying put) is
+    # blocked, otherwise the distance to that edge is a candidate for `t`
+    # (this is correct even if `start` is already past the *other* edge on
+    # this axis -- the formula still measures the distance to the edge ahead).
+    # A zero direction component blocks the move only if `start` is already
+    # outside the range on that axis (tangential movement can't fix it).
+    # This also covers the case where a previous move stopped exactly at an
+    # edge and floating-point rounding left it a hair outside: such a
+    # penetration is resolved by the "moving back toward the edge ahead"
+    # branch instead of permanently blocking all movement.
+    t = float("Inf")
+
+    if direction[0] > 0:
+        if start[0] >= max_x:
+            return 0
+        t = min(t, (max_x - start[0]) / direction[0])
+    elif direction[0] < 0:
+        if start[0] <= min_x:
+            return 0
+        t = min(t, (min_x - start[0]) / direction[0])
+    elif start[0] < min_x or start[0] > max_x:
+        return 0
+
+    if direction[1] > 0:
+        if start[1] >= max_y:
+            return 0
+        t = min(t, (max_y - start[1]) / direction[1])
+    elif direction[1] < 0:
+        if start[1] <= min_y:
+            return 0
+        t = min(t, (min_y - start[1]) / direction[1])
+    elif start[1] < min_y or start[1] > max_y:
+        return 0
+
+    return t * dir_len
+
+
 def _circle_rect_collides(circle: Tuple[float, float],
                            radius: float,
                            rect_center: Tuple[float, float],
@@ -219,6 +401,30 @@ def is_move_colliding(game: GameState, player: int, amount: float) -> bool:
             return True
     return False
 
+def _longest_move(game: GameState, player:int) -> float:
+    d = float("Inf")
+    robot  = game.robots[player]
+    other = game.robots[1 - player]
+
+    hw = config.BOX_WIDTH  / 2
+    hh = config.BOX_HEIGHT / 2
+
+    d = min(d, _longest_move_to_rect_inside(
+        robot.position, robot.orientation, config.ROBOT_RADIUS,
+        0.0, 0.0, game.map.width, game.map.height,
+    ))
+    d = min(d, _longest_move_to_circle(
+        robot.position, robot.orientation, config.ROBOT_RADIUS,
+        other.position, config.ROBOT_RADIUS,
+    ))
+    for box in game.laid_down_boxes():
+        d = min(d, _longest_move_to_rect_outside(
+            robot.position, robot.orientation, config.ROBOT_RADIUS,
+            box.position, box.orientation, hw, hh,
+        ))
+
+    return d
+
 # ── Actions ───────────────────────────────────────────────────────────────────
 
 class GameError(Exception):
@@ -251,39 +457,12 @@ def do_move(game: GameState, player: int, amount: float) -> None:
 
     hw = config.BOX_WIDTH  / 2
     hh = config.BOX_HEIGHT / 2
-    laid = game.laid_down_boxes()
-    ox, oy = robot.orientation
 
-    def collides(dist: float) -> bool:
-        nx = robot.position[0] + ox * dist
-        ny = robot.position[1] + oy * dist
-        p  = (nx, ny)
-        if not _circle_in_map(p, config.ROBOT_RADIUS, game.map.width, game.map.height):
-            return True
-        if math.hypot(nx - other.position[0], ny - other.position[1]) < 2 * config.ROBOT_RADIUS:
-            return True
-        for box in laid:
-            if _circle_rect_collides(p, config.ROBOT_RADIUS, box.position, box.orientation, hw, hh):
-                return True
-        return False
-
-    # Fast path: no collision at full distance
-    if not collides(target):
-        actual = target
-    else:
-        # Binary search for maximum safe distance
-        lo, hi = 0.0, target
-        for _ in range(config.COLLISION_STEPS):
-            mid = (lo + hi) / 2.0
-            if collides(mid):
-                hi = mid
-            else:
-                lo = mid
-        actual = lo
+    actual = min(target, _longest_move(game, player))
 
     robot.position = (
-        robot.position[0] + ox * actual,
-        robot.position[1] + oy * actual,
+        robot.position[0] + robot.orientation[0] * actual,
+        robot.position[1] + robot.orientation[1] * actual,
     )
     robot.cooldown = config.MOVE_COOLDOWN
 
