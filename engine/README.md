@@ -10,7 +10,7 @@ editing the engine itself.
 | Module | Responsibility |
 |---|---|
 | `config.py` | All tunable constants (map/area geometry, robot & box physics, scoring, timing, `INITIAL_BOXES`). Pure data, no logic. |
-| `game.py` | The actual simulation: `Area`, `Map`, `Box`, `Robot`, `GameState` dataclasses; geometry helpers (`_normalize`, `_dot`, `_box_corners`, `_circle_rect_distance`, `_circle_rect_collides`, `_obb_obb_collides`, `_circle_in_map`, `_longest_move_to_rect_outside`, `_longest_move_to_rect_inside`, `_longest_move_to_circle`); action implementations (`do_move`, `do_rotate`, `do_pickup`, `do_set_color`, `do_lay_down`), each gated by the shared `_require_not_busy` cooldown check; `is_box_accessible`, `is_move_colliding`, `compute_scores`; `GameError`. |
+| `game.py` | The actual simulation: `Area`, `Map`, `Box`, `Robot`, `GameState` dataclasses; geometry helpers (`_normalize`, `_dot`, `_box_corners`, `_circle_rect_distance`, `_circle_rect_collides`, `_obb_obb_collides`, `_circle_in_map`, `_longest_move_to_rect_outside`, `_longest_move_to_rect_inside`, `_longest_move_to_circle`, `_longest_move`); action implementations (`do_move`, `do_rotate`, `do_pickup`, `do_set_color`, `do_lay_down`), each gated by the shared `_require_not_busy` cooldown check; `is_box_accessible`, `is_move_colliding`, `compute_scores`; `GameError`. |
 | `interface.py` | The agent-facing API. Wraps `game.py` behind a `_Context`/`_ctx()` mechanism that enforces the one-action-per-turn rule and exposes only player-scoped, read-only-feeling free functions. **The only engine module agent code imports.** |
 | `display.py` | pygame rendering: `init_window`, `draw_state`, `handle_events`, `show`. Imports `game` private helpers directly (`_box_corners`, etc.) to draw oriented rectangles. |
 | `history.py` | JSON (de)serialization of `GameState` snapshots: `snapshot`, `save`, `load`, `load_map`, `load_frame`, `_map_to_dict`. |
@@ -86,10 +86,11 @@ player1 area (1), then each scoring area (2, 3, …) via a `next_id` counter.
   box-vs-box overlap checks in `do_lay_down`.
 - **Map edge**: simple AABB containment check (`_circle_in_map`).
 - **Movement collision** (`do_move`): the maximum safe travel distance is
-  computed directly as the minimum of `_longest_move_to_rect_inside`
+  computed by `_longest_move` as the minimum of `_longest_move_to_rect_inside`
   (map edge), `_longest_move_to_circle` (other robot), and
   `_longest_move_to_rect_outside` (each laid-down box) — the robot is moved to
-  just-before the obstacle.
+  just-before the obstacle. `interface.get_obstacle_distance` exposes this raw
+  value (uncapped, possibly `inf`) to agents.
 - **Lay-down placement**: fixed `LAY_DOWN_DISTANCE` directly in front of the
   robot (along its current orientation), the box inherits the robot's
   orientation. Fails with `GameError` (turn not consumed) if the spot is out

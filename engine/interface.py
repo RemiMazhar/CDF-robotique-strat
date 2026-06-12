@@ -32,7 +32,7 @@ import game as _game
 from game import (
     Box, Map, Area, GameState, GameError,
     is_box_accessible, compute_scores,
-    _circle_rect_distance, _normalize, is_move_colliding,
+    _circle_rect_distance, _normalize, is_move_colliding, _longest_move,
     do_move, do_rotate, do_pickup, do_set_color, do_lay_down,
 )
 
@@ -158,6 +158,14 @@ def is_colliding(player: int, amount: float) -> bool:
     """Return True if moving player's robot forward by amount would collide
     with the map edge, the other robot, or a laid-down box."""
     return is_move_colliding(_ctx().game, player, amount)
+
+
+def get_obstacle_distance(player: int) -> float:
+    """Return the distance from player's robot to the nearest obstacle (map
+    edge, the other robot, or a laid-down box) along its current orientation,
+    i.e. how far it could move forward before colliding -- NOT capped at
+    config.MAX_MOVE_SPEED. May be float('inf') if nothing is in the way."""
+    return _longest_move(_ctx().game, player)
 
 
 def get_box_distance(player: int, box_id: int) -> float:

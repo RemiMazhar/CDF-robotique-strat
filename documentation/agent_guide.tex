@@ -245,6 +245,7 @@ class Agent:
 \func{get\_boxes\_held(player)} & Boxes currently held by \code{player} \\
 \func{is\_accessible(player, box\_id)} & Is the box on the ground and within reach? \\
 \func{is\_colliding(player, amount)} & Would moving forward by \code{amount} collide (edge/robot/box)? \\
+\func{get\_obstacle\_distance(player)} & Distance from \code{player}'s robot to the nearest obstacle (map edge, other robot, or laid-down box) along its current orientation; \textbf{not} capped at \code{config.MAX\_MOVE\_SPEED}, may be \code{inf} \\
 \func{get\_box\_distance(player, box\_id)} & Circle-to-rectangle distance, robot $\to$ box \\
 \func{get\_box\_direction(player, box\_id)} & Unit vector from robot center toward box center \\
 \func{get\_area\_distance(player, area\_id)} & Distance from robot center to the area rectangle (0 if inside) \\
