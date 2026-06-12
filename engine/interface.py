@@ -227,8 +227,10 @@ def get_score(player: int) -> int:
 # cooldown on success; rotate never does.
 
 def move(amount: float) -> None:
-    """Move forward amount distance (negative = backward, capped at MAX_MOVE_SPEED).
-    Stops before any collision. Starts a cooldown of config.MOVE_COOLDOWN turns."""
+    """Move forward by amount distance (must be >= 0, capped at MAX_MOVE_SPEED).
+    Stops before any collision. Starts a cooldown of config.MOVE_COOLDOWN turns.
+
+    Raises GameError if amount is negative — backward movement is not allowed."""
     ctx = _ctx()
     ctx.require_action_available()
     do_move(ctx.game, ctx.player_id, amount)

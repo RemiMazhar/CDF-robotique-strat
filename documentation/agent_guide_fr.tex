@@ -90,7 +90,7 @@ En tant que développeur d'agent, vous allez :
         carte. Chaque caisse a une \textbf{couleur} (\code{0} ou \code{1}) et
         peut être ramassée par les robots.
     \item[Robots] Chaque joueur contrôle un robot circulaire qui démarre
-        dans sa propre zone. Un robot peut tourner librement, avancer/reculer,
+        dans sa propre zone. Un robot peut tourner librement, avancer,
         ramasser une caisse proche, changer la couleur d'une caisse proche, ou
         poser une caisse qu'il transporte.
         Avancer, ramasser, recolorer et poser prennent du temps réel : ces
@@ -274,7 +274,7 @@ class Agent:
 \textbf{Fonction} & \textbf{Effet} \\
 \midrule
 \endhead
-\func{move(amount)} & Avance de \code{amount} (négatif = recule), plafonné à \code{config.MAX\_MOVE\_SPEED} ; s'arrête juste avant toute collision. Déclenche un cooldown de \code{config.MOVE\_COOLDOWN} ticks \\
+\func{move(amount)} & Avance de \code{amount} ($\geq 0$ ; plafonné à \code{config.MAX\_MOVE\_SPEED}) ; s'arrête juste avant toute collision. Déclenche un cooldown de \code{config.MOVE\_COOLDOWN} ticks \\
 \func{rotate(new\_direction)} & Oriente le robot vers \code{new\_direction}. Ne déclenche elle-même aucun cooldown \\
 \func{pickup(box\_id)} & Ramasse une caisse accessible (échoue si trop loin ou si les mains sont pleines). Déclenche un cooldown de \code{config.PICKUP\_COOLDOWN} ticks \\
 \func{set\_color(box\_id, color)} & Recolore une caisse accessible en 0 ou 1. Déclenche un cooldown de \code{config.SET\_COLOR\_COOLDOWN} ticks \\
@@ -287,10 +287,11 @@ Toutes les fonctions d'action peuvent lever :
     \item \code{interface.ActionError} si une seconde action est tentée
           durant le même tour.
     \item \code{game.GameError} si l'action elle-même est invalide (hors de
-          portée, bloquée, etc.) \textbf{ou si le robot est encore en
-          cooldown suite à une action précédente} (cela s'applique aussi
-          à \func{rotate}). Cela ne consomme \textbf{pas} le tour, vous pouvez
-          donc vous rattraper et essayer autre chose.
+          portée, bloquée, valeur de \func{move} négative, etc.) \textbf{ou si
+          le robot est encore en cooldown suite à une action précédente}
+          (cela s'applique aussi à \func{rotate}). Cela ne consomme
+          \textbf{pas} le tour, vous pouvez donc vous rattraper et essayer
+          autre chose.
 \end{itemize}
 
 % ============================================================================

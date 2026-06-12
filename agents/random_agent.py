@@ -31,7 +31,7 @@ class Agent:
         action = random.choice(choices)
 
         if action == "move":
-            amount = random.uniform(-config.MAX_MOVE_SPEED, config.MAX_MOVE_SPEED)
+            amount = random.uniform(0.0, config.MAX_MOVE_SPEED)
             interface.move(amount)
 
         elif action == "rotate":

@@ -234,18 +234,20 @@ def _require_not_busy(robot: Robot) -> None:
 
 
 def do_move(game: GameState, player: int, amount: float) -> None:
-    """Move the robot up to |amount| distance (capped at MAX_MOVE_SPEED).
+    """Move the robot forward by up to amount distance (capped at MAX_MOVE_SPEED).
     Stops just before the first collision with the map edge, the other robot,
     or any laid-down box.
 
-    Raises GameError if the robot is still on cooldown from a previous action.
+    Raises GameError if amount is negative (backward movement is not allowed)
+    or if the robot is still on cooldown from a previous action.
     On success (including a 0-distance move due to immediate collision),
     starts a new cooldown of config.MOVE_COOLDOWN turns."""
     robot  = game.robots[player]
     _require_not_busy(robot)
+    if amount < 0.0:
+        raise GameError("Backward movement is not allowed: amount must be >= 0")
     other  = game.robots[1 - player]
-    sign   = 1.0 if amount >= 0.0 else -1.0
-    target = min(abs(amount), config.MAX_MOVE_SPEED)
+    target = min(amount, config.MAX_MOVE_SPEED)
 
     hw = config.BOX_WIDTH  / 2
     hh = config.BOX_HEIGHT / 2
@@ -266,18 +268,18 @@ def do_move(game: GameState, player: int, amount: float) -> None:
         return False
 
     # Fast path: no collision at full distance
-    if not collides(sign * target):
-        actual = sign * target
+    if not collides(target):
+        actual = target
     else:
         # Binary search for maximum safe distance
         lo, hi = 0.0, target
         for _ in range(config.COLLISION_STEPS):
             mid = (lo + hi) / 2.0
-            if collides(sign * mid):
+            if collides(mid):
                 hi = mid
             else:
                 lo = mid
-        actual = sign * lo
+        actual = lo
 
     robot.position = (
         robot.position[0] + ox * actual,

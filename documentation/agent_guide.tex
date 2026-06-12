@@ -88,7 +88,7 @@ As an agent author, you will:
     \item[Boxes] Identical-sized rectangles scattered on the map. Each box
         has a \textbf{color} (\code{0} or \code{1}) and can be picked up by robots.
     \item[Robots] Each player controls one circular robot starting in their
-        own area. A robot can rotate freely, move forward/backward, pick up a nearby box,
+        own area. A robot can rotate freely, move forward, pick up a nearby box,
         change the color of a nearby box, or lay down a box it is holding.
         Moving, picking up, recoloring and laying down each take real time:
         they put the robot on a temporary \emph{cooldown} during which it
@@ -264,7 +264,7 @@ while the robot is on cooldown --- see Section~\ref{sec:one-action}.}
 \textbf{Function} & \textbf{Effect} \\
 \midrule
 \endhead
-\func{move(amount)} & Move forward \code{amount} (negative = backward), capped at \code{config.MAX\_MOVE\_SPEED}; stops just before any collision. Starts a cooldown of \code{config.MOVE\_COOLDOWN} ticks \\
+\func{move(amount)} & Move forward by \code{amount} ($\geq 0$; capped at \code{config.MAX\_MOVE\_SPEED}); stops just before any collision. Starts a cooldown of \code{config.MOVE\_COOLDOWN} ticks \\
 \func{rotate(new\_direction)} & Face \code{new\_direction}. Does not itself start a cooldown\\
 \func{pickup(box\_id)} & Pick up an accessible box (fails if too far or hands full). Starts a cooldown of \code{config.PICKUP\_COOLDOWN} ticks \\
 \func{set\_color(box\_id, color)} & Recolor an accessible box to 0 or 1. Starts a cooldown of \code{config.SET\_COLOR\_COOLDOWN} ticks \\
@@ -277,10 +277,10 @@ All action functions may raise:
     \item \code{interface.ActionError} if a second action is attempted in
           the same turn.
     \item \code{game.GameError} if the action itself is invalid (out of
-          reach, blocked, etc.) \textbf{or if the robot is still on cooldown
-          from a previous action} (this applies to \func{rotate} too). This
-          does \textbf{not} consume the turn, so you can recover and try
-          something else.
+          reach, blocked, negative \func{move} amount, etc.) \textbf{or if
+          the robot is still on cooldown from a previous action} (this
+          applies to \func{rotate} too). This does \textbf{not} consume the
+          turn, so you can recover and try something else.
 \end{itemize}
 
 % ============================================================================
