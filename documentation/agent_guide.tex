@@ -416,9 +416,9 @@ These are the objects returned by \code{interface} functions.
 \midrule
 \endhead
 \code{DT} & 0.1 & Seconds represented by one tick. \\
-\code{GAME\_DURATION} & 120.0 & Total game length, in seconds
+\code{GAME\_DURATION} & 60.0 & Total game length, in seconds
     ($= $ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
-\code{TOTAL\_TICKS} & 1200 & Number of ticks in a game. \\
+\code{TOTAL\_TICKS} & 600 & Number of ticks in a game. \\
 \bottomrule
 \end{longtable}
 
@@ -428,13 +428,13 @@ These are the objects returned by \code{interface} functions.
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{MOVE\_COOLDOWN} & 2 & Total ticks \func{move} occupies the robot
+\code{MOVE\_COOLDOWN} & 1 & Total ticks \func{move} occupies the robot
     for, including the tick it succeeds on. \\
-\code{PICKUP\_COOLDOWN} & 5 & Total ticks \func{pickup} occupies the
+\code{PICKUP\_COOLDOWN} & 20 & Total ticks \func{pickup} occupies the
     robot for, including the tick it succeeds on. \\
-\code{SET\_COLOR\_COOLDOWN} & 5 & Total ticks \func{set\_color}
+\code{SET\_COLOR\_COOLDOWN} & 10 & Total ticks \func{set\_color}
     occupies the robot for, including the tick it succeeds on. \\
-\code{LAY\_DOWN\_COOLDOWN} & 5 & Total ticks \func{lay\_down} occupies
+\code{LAY\_DOWN\_COOLDOWN} & 20 & Total ticks \func{lay\_down} occupies
     the robot for, including the tick it succeeds on. \\
 \bottomrule
 \end{longtable}
@@ -449,7 +449,7 @@ While any of these cooldowns is active (\code{get\_cooldown(player) > 0}),
 \textbf{Constant} & \textbf{Value} & \textbf{Meaning} \\
 \midrule
 \endhead
-\code{INITIAL\_BOXES} & list of 11 tuples & The fixed starting layout: each
+\code{INITIAL\_BOXES} & list of 12 tuples & The fixed starting layout: each
     entry is \code{(x, y, angle\_degrees, color)} --- the box's initial
     center position, its orientation expressed as an angle in degrees from
     the $+x$ axis,

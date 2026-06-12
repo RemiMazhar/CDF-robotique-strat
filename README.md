@@ -44,7 +44,7 @@ python play.py run
 # ... pip output ...
 # Setup complete.
 #
-# Game start  —  1200 ticks  (120.0 s)
+# Game start  —  600 ticks  (60.0 s)
 # ...
 ```
 

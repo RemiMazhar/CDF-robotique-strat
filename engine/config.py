@@ -48,8 +48,8 @@ POINTS_SCORING_AREA = 5   # per box in a scoring area, for matching color
 
 # ── Timing ──────────────────────────────────────────────────────────────────────
 DT            = 0.1      # seconds per tick (informational; game is turn-based)
-GAME_DURATION = 120.0    # seconds
-TOTAL_TICKS   = int(GAME_DURATION / DT)   # 1200
+GAME_DURATION = 60.0    # seconds
+TOTAL_TICKS   = int(GAME_DURATION / DT)   # 600
 
 # ── Action costs (temporal) ─────────────────────────────────────────────────────
 # Each *_COOLDOWN value is the TOTAL number of turns the robot is occupied by
@@ -60,6 +60,6 @@ TOTAL_TICKS   = int(GAME_DURATION / DT)   # 1200
 #     pick up, recolor, or lay down during that time).
 # Starting values for playtesting -- tune freely.
 MOVE_COOLDOWN      = 1
-PICKUP_COOLDOWN    = 10
-SET_COLOR_COOLDOWN = 5
-LAY_DOWN_COOLDOWN  = 10
+PICKUP_COOLDOWN    = 20
+SET_COLOR_COOLDOWN = 10
+LAY_DOWN_COOLDOWN  = 20

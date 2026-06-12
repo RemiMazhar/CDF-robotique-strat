@@ -435,9 +435,9 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \midrule
 \endhead
 \code{DT} & 0.1 & Nombre de secondes représentées par un tick. \\
-\code{GAME\_DURATION} & 120.0 & Durée totale de la partie, en
+\code{GAME\_DURATION} & 60.0 & Durée totale de la partie, en
     secondes ($=$ \code{DT} $\times$ \code{TOTAL\_TICKS}). \\
-\code{TOTAL\_TICKS} & 1200 & Nombre de ticks dans une partie. \\
+\code{TOTAL\_TICKS} & 600 & Nombre de ticks dans une partie. \\
 \bottomrule
 \end{longtable}
 
@@ -447,14 +447,14 @@ Ce sont les objets retournés par les fonctions de \code{interface}.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{MOVE\_COOLDOWN} & 2 & Nombre total de ticks pendant lesquels
+\code{MOVE\_COOLDOWN} & 1 & Nombre total de ticks pendant lesquels
     \func{move} occupe le robot, y compris le tick où elle réussit. \\
-\code{PICKUP\_COOLDOWN} & 5 & Nombre total de ticks pendant lesquels
+\code{PICKUP\_COOLDOWN} & 20 & Nombre total de ticks pendant lesquels
     \func{pickup} occupe le robot, y compris le tick où elle réussit. \\
-\code{SET\_COLOR\_COOLDOWN} & 5 & Nombre total de ticks pendant
+\code{SET\_COLOR\_COOLDOWN} & 10 & Nombre total de ticks pendant
     lesquels \func{set\_color} occupe le robot, y compris le tick où elle
     réussit. \\
-\code{LAY\_DOWN\_COOLDOWN} & 5 & Nombre total de ticks pendant
+\code{LAY\_DOWN\_COOLDOWN} & 20 & Nombre total de ticks pendant
     lesquels \func{lay\_down} occupe le robot, y compris le tick où elle
     réussit. \\
 \bottomrule
@@ -470,7 +470,7 @@ y compris \func{rotate} --- lèvent \code{GameError} sans consommer le tour.
 \textbf{Constante} & \textbf{Valeur} & \textbf{Signification} \\
 \midrule
 \endhead
-\code{INITIAL\_BOXES} & liste de 11 tuples & La disposition de départ
+\code{INITIAL\_BOXES} & liste de 12 tuples & La disposition de départ
     fixe : chaque entrée est \code{(x, y, angle\_degrees, color)} --- la
     position initiale du centre de la caisse, son orientation exprimée comme
     un angle en degrés depuis l'axe $+x$, et sa couleur de départ
